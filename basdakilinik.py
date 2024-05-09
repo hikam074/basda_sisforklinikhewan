@@ -15,6 +15,13 @@ def postgresql():
     return conn
 # -------------------------------------------------------------------------------------------------
 
+# 0. WELCOMING INTERFACE --------------------------------------------------------------------------
+def welcome_interface():
+    os.system('cls')
+    print(header_fancy)
+    input("Ketik [ENTER] untuk melanjutkan  ")
+# -------------------------------------------------------------------------------------------------
+
 # 1. LAUNCH PAGE ----------------------------------------------------------------------------------
 def launch_page():
 
@@ -62,7 +69,7 @@ def launch_page():
         elif is_staf :
             mode_admin(uname, password)
         else :
-            relogin = input("username atau password anda salah, tekan [ENTER] untuk coba lagi atau [Q] untuk kembali")
+            relogin = input("username atau password anda salah, tekan [ENTER] untuk coba lagi atau [Q] untuk kembali : ")
             if relogin == '':
                 login()
             else :
@@ -76,14 +83,12 @@ def launch_page():
     def exit():
         sys.exit()
 
-
+    # Interface Launch Page
     os.system('cls')
-    print(header)
-    input("ketik [ENTER] untuk melanjutkan")
-
     print(header)
     print("Selamat datang di Klinik Satwa Sehat\n")
     print(" [1] Log-in \n [2] Sign-Up \n [3] Manual Book \n [4] Exit \n")
+    # Pilih menu
     launch_choice = input("Silahkan pilih menu anda : ")
 
     # 1.1 LOGIN
@@ -226,21 +231,105 @@ def manual_book():
 
 # -------------------------------------------------------------------------------------------------
 
-# HEADER LOGO -------------------------------------------------------------------------------------
+# FITUR ADMIN PERTAMA -----------------------------------------------------------------------------
+def admin_pertama():
+    indikator_admin = []    # wadah seluruh data admin
+    # mengakses postgresql
+    conn = postgresql()
+    cur = conn.cursor()
+    # menambahkan data staf dari postgresql ke variabel python
+    cur.execute("SELECT * FROM staf")
+    for i in cur:
+        indikator_admin.append(i)   # menambahkan tiap baris
+    # jika data indikator kosong (tidak ada data admin yang terdaftar)
+    if not indikator_admin:
+        os.system('cls')
+        print(f"{mini_header}\nProgram belum memiliki admin, Silahkan masukkan admin pertama\n")
+        # memasukkan data admin berdasarkan entitiy staf
+        id_staf    = input("ID admin                     : ")
+        nama_staf  = input("Nama                         : ")
+        tlp_staf   = input("No. Telepon                  : ")
+        uname_staf = input("Username Admin (untuk login) : ")
+        pw_staf    = input("Password (untuk login)       : ")
+        # mencoba memasukkan data ke postgresql
+        try:
+            cur.execute(f"""
+                        INSERT INTO staf (id_staf, nama_staf, tlp_staf, uname_staf, pw_staf)
+                        VALUES ({id_staf}, \'{nama_staf}\', \'{tlp_staf}\', \'{uname_staf}\', \'{pw_staf}\')
+                        """)
+            conn.commit() # penting untuk menyimpan perubahan
+            # menutup postgresql 
+            cur.close()
+            conn.close()
 
-head_a = (r"    _____       _    _____      _      _____                ")
-head_b = (r"   / ____|     | |  / ____|    | |    / ____|               ")
-head_c = (r"  | (___   __ _| |_| (___   ___| |_  | |     __ _ _ __ ___  ")
-head_d = (r"   \___ \ / _` | __|\___ \ / _ \ __| | |    / _` | '__/ _ \ ")
-head_e = (r"   ____) | (_| | |_ ____) |  __/ |_  | |___| (_| | | |  __/ ")
-head_f = (r"  |_____/ \__,_|\__|_____/ \___|\__|  \_____\__,_|_|  \___| ")
-head_g = (r"                                                            ")
-
-header = head_a+'\n'+head_b+'\n'+head_c+'\n'+head_d+'\n'+head_e+'\n'+head_f+'\n'+head_g+'\n'
+            input("\nAkun berhasil ditambahkan, tekan [ENTER] untuk melanjutkan ")
+        except:
+            print()
+            reregister = input("Kesalahan input, tekan [ENTER] untuk coba lagi atau [Q] untuk keluar : ")
+            # apakah mau mencoba lagi atau keluar dari aplikasi
+            if reregister == '':
+                admin_pertama()
+            else:
+                sys.exit()
 
 # -------------------------------------------------------------------------------------------------
 
-# EKSEKUSI PROGRAM --------------------------------------------------------------------------------
+# HEADER LOGO -------------------------------------------------------------------------------------
 
+minihead_a = (r"  ___       _   ___      _      ___               ")
+minihead_b = (r" / __| __ _| |_/ __| ___| |_   / __|__ _ _ _ ___  ")
+minihead_c = (r" \__ \/ _` |  _\__ \/ -_)  _| | (__/ _` | '_/ -_) ")
+minigead_d = (r" |___/\__,_|\__|___/\___|\__|  \___\__,_|_| \___| ")
+                                                 
+head_a = (r"        _____       _    _____      _      _____                     ")
+head_b = (r"       / ____|     | |  / ____|    | |    / ____|                    ")
+head_c = (r"      | (___   __ _| |_| (___   ___| |_  | |     __ _ _ __ ___       ")
+head_d = (r"       \___ \ / _` | __|\___ \ / _ \ __| | |    / _` | '__/ _ \      ")
+head_e = (r"       ____) | (_| | |_ ____) |  __/ |_  | |___| (_| | | |  __/      ")
+head_f = (r"      |_____/ \__,_|\__|_____/ \___|\__|  \_____\__,_|_|  \___|      ")
+head_g = (r"                                                                     ")
+
+titl_a = (r"          SATWA SEHAT CARE : APLIKASI LAYANAN KLINIK HEWAN           ") 
+
+header = head_a+'\n'+head_b+'\n'+head_c+'\n'+head_d+'\n'+head_e+'\n'+head_f+'\n'+head_g+'\n'
+header_fancy =  '+'+'='*69+'+'+'\n'+ \
+                '|'+head_a+'|'+'\n'+ \
+                '|'+head_b+'|'+'\n'+ \
+                '|'+head_c+'|'+'\n'+ \
+                '|'+head_d+'|'+'\n'+ \
+                '|'+head_e+'|'+'\n'+ \
+                '|'+head_f+'|'+'\n'+ \
+                '|'+head_g+'|'+'\n'+ \
+                '|'+' '*69+'|'+'\n'+ \
+                '|'+titl_a+'|'+'\n'+ \
+                '+'+'='*69+'+'+'\n'
+mini_header = minihead_a+'\n'+minihead_b+'\n'+minihead_c+'\n'+minigead_d+'\n'
+
+# ┏┓   ┏┓     ┏┓      
+# ┗┓┏┓╋┗┓┏┓╋  ┃ ┏┓┏┓┏┓
+# ┗┛┗┻┗┗┛┗ ┗  ┗┛┗┻┛ ┗ 
+                    
+#  __       __          __         
+# (_  _ _|_(_  _ _|_   /   _  __ _ 
+# __)(_| |___)(/_ |_   \__(_| | (/_
+
+#  __    __   _____  __   ____ _____      __     __    ___   ____ 
+# ( (`  / /\   | |  ( (` | |_   | |      / /`   / /\  | |_) | |_  
+# _)_) /_/--\  |_|  _)_) |_|__  |_|      \_\_, /_/--\ |_| \ |_|__ 
+
+# ____ ____ ___ ____ ____ ___    ____ ____ ____ ____ 
+# [__  |__|  |  [__  |___  |     |    |__| |__/ |___ 
+# ___] |  |  |  ___] |___  |     |___ |  | |  \ |___ 
+                                                   
+
+# (`  |-(` _ |-  /`     _ 
+# _)(||__)(/_|_  \,(||`(/_
+
+# -------------------------------------------------------------------------------------------------                        
+
+# EKSEKUSI PROGRAM --------------------------------------------------------------------------------
 postgresql()
+
+welcome_interface()
+admin_pertama()
 launch_page()
