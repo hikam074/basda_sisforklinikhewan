@@ -62,7 +62,7 @@ def launch_page():
         conn = postgresql()
         cur = conn.cursor()
         # cek tabel customer
-        cur.execute(f""""
+        cur.execute(f"""
                     SELECT * FROM customer
                     WHERE
                         uname_pelanggan = \'{uname}\'
@@ -70,19 +70,19 @@ def launch_page():
                     """)
         is_customer = cur.fetchone()
         # cek tabel dokter
-        cur.execute(f""""
+        cur.execute(f"""
                     SELECT * FROM dokter
                     WHERE
-                        uname_dokter = {uname}
-                        AND pw_dokter = {password}
+                        uname_dokter = \'{uname}\'
+                        AND pw_dokter = \'{password}\'
                     """)
         is_dokter = cur.fetchone()
         # cek tabel staf
-        cur.execute(f""""
+        cur.execute(f"""
                     SELECT * FROM staf
                     WHERE
-                        uname_staf = {uname}
-                        AND pw_staf = {password}
+                        uname_staf = \'{uname}\'
+                        AND pw_staf = \'{password}\'
                     """)
         is_staf = cur.fetchone()
         # menutup postgresql
