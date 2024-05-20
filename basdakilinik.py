@@ -2,6 +2,7 @@ import psycopg2
 import os
 import sys
 import time
+import tabulate
 
 # SESUAIKAN DENGAN POSTGRE KALIAN -----------------------------------------------------------------
 def postgresql_connect():                   # menghubungkan postgresql dan python
@@ -259,6 +260,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
 
 # 4. FITUR ADMIN ----------------------------------------------------------------------------------
 def mode_admin(uname, nama_lengkap_logged):
+    os.system('cls')
     print(f"Selamat datang, {nama_lengkap_logged} !")
     print(" [1] RESERVASI \n [2] TRANSAKSI \n [3] Data Rekam Medis \n [4] Data Kustomer \n [5] Data Hewan Peliharaan \n [6] Data Dokter \n [7] Layanan \n [8] Staff/Admin \n [9] Log-out")
     admin_choice = input("Silahkan pilih menu anda : ")
@@ -283,13 +285,326 @@ def mode_admin(uname, nama_lengkap_logged):
     elif admin_choice == '5':
         pass
 
-    # 4.6 DATA DOKTER
+    # 4.6 DATA DOKTER v
     elif admin_choice == '6':
-        pass
+        def lihat_data_dokter():
+            conn, cur = postgresql_connect()
+            """Menampilkan data dokter dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+            
+            # Query SQL untuk mengambil semua data dari tabel dokter
+            query = """
+            SELECT *
+            FROM dokter
+            """
+            
+            # Menjalankan query
+            cur.execute(query)
+            
+            # Mengambil semua data hasil query
+            data_dokter = cur.fetchall()
+            
+            # Menutup cursor
+            postgresql_cls(conn, cur)
+            
+            # Headers untuk tabel yang akan ditampilkan
+            headers = ["ID", 'Nama Dokter', 'Telepon', 'No. STR', 'Username', 'Password']
+            
+            # Menampilkan data dalam format tabel
+            print(tabulate.tabulate(data_dokter, headers=headers, tablefmt="grid"))  
 
-    # 4.7 LAYANAN
+        choice_4 = input("[1] Tambah [2] Lihat [3] Edit [4] Hapus Pilih menu : ")
+        if choice_4 == '1':     # Tambah data dokter v
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            # Meminta data dokter baru dari user
+            conn, cur = postgresql_connect()
+            nama_dokter     = input("Masukkan nama dokter: ")
+            tlp_dokter      = input("Masukkan nomor telepon dokter: ")
+            no_str          = input("Masukkan nomor surat tanda registrasi dokter: ")
+            uname_dokter    = input("Masukkan username dokter: ")
+            pw_dokter       = input("Masukkan password dokter: ")
+            # Menambah dokter baru ke database
+            # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
+            result = False
+            if not nama_dokter or not tlp_dokter or not no_str or not uname_dokter or not pw_dokter:
+                print("Semua field harus diisi!")
+                return False
+            else:
+                """Menambahkan data dokter baru ke database."""
+                # Membuat cursor untuk berinteraksi dengan database
+                cur = conn.cursor()
+                
+                # Query SQL untuk menambahkan data dokter baru
+                query = """
+                INSERT INTO dokter (nama_dokter, tlp_dokter, no_str, uname_dokter, pw_dokter)
+                VALUES (%s, %s, %s, %s, %s)
+                """
+                
+                # Menjalankan query dengan data yang diberikan
+                cur.execute(query, (nama_dokter, tlp_dokter, no_str, uname_dokter, pw_dokter))
+                
+                # Melakukan commit perubahan ke database
+                conn.commit()
+                
+                # Mengambil jumlah baris yang dimodifikasi oleh query
+                boolean = cur.rowcount
+                
+                # Menutup cursor
+                cur.close()
+                
+                print("Dokter baru telah ditambahkan!")
+                result = True
+
+            if result:
+                input('Tambah data berhasil')
+            else:
+                input('Tambah data gagal')
+            mode_admin(uname, nama_lengkap_logged)
+        elif choice_4 == '2':   # Lihat data dokter v
+            lihat_data_dokter()
+            input("\n\nTekan [enter] untuk kembali ke Menu Dokter")
+            mode_admin(uname, nama_lengkap_logged)
+        elif choice_4 == '3':   # Edit data dokter v
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            # Meminta ID dokter yang ingin diubah
+            id_dokter = int(input("Masukkan ID dokter yang ingin diubah: "))
+            # Meminta data baru dari user
+            nama_baru = input("Masukkan nama baru dokter (kosongkan jika tidak ingin mengubah): ")
+            telp_baru = input("Masukkan nomor telepon baru dokter (kosongkan jika tidak ingin mengubah): ")
+            no_str_baru = input("Masukkan nomor STR baru dokter (kosongkan jika tidak ingin mengubah): ")
+            uname_baru = input("Masukkan username baru dokter (kosongkan jika tidak ingin mengubah): ")
+            password_baru = input("Masukkan password baru dokter (kosongkan jika tidak ingin mengubah): ")
+            # Mengubah data dokter
+            """Mengubah data dokter yang ada di database."""
+            # Membuat cursor untuk berinteraksi dengan database
+            conn,cur = postgresql_connect()
+            
+            # List untuk menyimpan bagian query yang akan diupdate
+            updates = []
+            
+            # List untuk menyimpan nilai yang akan diisi dalam query
+            values = []
+
+            # Mengecek apakah ada nilai baru untuk nama_dokter dan menambahkannya ke query jika ada
+            if nama_baru:
+                updates.append("nama_dokter = %s")
+                values.append(nama_baru)
+            
+            # Mengecek apakah ada nilai baru untuk tlp_dokter dan menambahkannya ke query jika ada
+            if telp_baru:
+                updates.append("tlp_dokter = %s")
+                values.append(telp_baru)
+            
+            # Mengecek apakah ada nilai baru untuk no_str dan menambahkannya ke query jika ada
+            if no_str_baru:
+                updates.append("no_str = %s")
+                values.append(no_str_baru)
+            
+            # Mengecek apakah ada nilai baru untuk uname_dokter dan menambahkannya ke query jika ada
+            if uname_baru:
+                updates.append("uname_dokter = %s")
+                values.append(uname_baru)
+            
+            # Mengecek apakah ada nilai baru untuk pw_dokter dan menambahkannya ke query jika ada
+            if password_baru:
+                updates.append("pw_dokter = %s")
+                values.append(password_baru)
+
+            # Menambahkan id_dokter ke values, ini diperlukan untuk klausa WHERE
+            values.append(id_dokter)
+
+            # Jika ada data yang diupdate
+            if updates:
+                # Membuat query update dengan bagian yang perlu diupdate
+                query = f"UPDATE dokter SET {', '.join(updates)} WHERE id_dokter = %s"
+                try:
+                    # Menjalankan query dengan nilai yang disediakan
+                    cur.execute(query, values)
+                    
+                    # Melakukan commit perubahan ke database
+                    conn.commit()
+                    
+                    # Menutup cursor
+                    print("Data dokter telah diubah!")
+                except psycopg2.Error as e:
+                    # Menampilkan pesan kesalahan jika gagal melakukan update
+                    print("Gagal mengubah data dokter:", e)
+                    
+                    # Melakukan rollback jika terjadi kesalahan
+                    conn.rollback()
+            else:
+                # Pesan jika tidak ada data yang diubah
+                print("Tidak ada data yang diubah.")
+            postgresql_cls(conn, cur)
+            input("\n\nTekan [enter] untuk kembali ke Menu Dokter")
+            mode_admin(uname, nama_lengkap_logged)
+        elif choice_4 == '4':   # Hapus data dokter v
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            lihat_data_dokter()
+            # Meminta ID dokter yang ingin dihapus
+            id_dokter = int(input("Masukkan ID dokter yang ingin dihapus: "))
+            # Menghapus dokter dari database
+            """Menghapus data dokter dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+            conn, cur = postgresql_connect()
+            
+            # Memeriksa apakah ada rekam medis yang terkait dengan dokter ini
+            cur.execute("SELECT COUNT(*) FROM rekam_medis WHERE id_dokter = %s", (id_dokter,))
+            count = cur.fetchone()[0]
+
+            # Jika ada rekam medis terkait, dokter tidak dapat dihapus
+            if count > 0:
+                print("Tidak dapat menghapus dokter karena masih ada rekam medis yang terkait.")
+                return False
+            else:
+                # Menghapus data dokter dari tabel dokter
+                cur.execute("DELETE FROM dokter WHERE id_dokter = %s", (id_dokter,))
+                
+                # Melakukan commit perubahan ke database
+                conn.commit()
+                
+                # Memeriksa apakah ada baris yang dihapus
+                if cur.rowcount > 0:
+                    print("Data dokter telah dihapus!")
+                    cur.close()
+                    result = True
+                else:
+                    print("Dokter dengan ID tersebut tidak ditemukan.")
+                    cur.close()
+                    result = False
+            input("\n\nTekan [enter] untuk kembali ke Menu Dokter")
+            mode_admin(uname, nama_lengkap_logged)
+            
+            if result == True:
+                print('Data berhasil terhapus')
+            else:
+                print('Data gagal dihapus')
+
+    # 4.7 LAYANAN v
     elif admin_choice == '7':
-        pass
+        def tambah_layanan(conn, cur, nama_layanan, harga_layanan):  # v
+            """Menambahkan data layanan baru ke database."""
+            cur = conn.cursor()
+            # Query untuk menambahkan layanan baru ke tabel 'layanan'
+            query = f"""
+            INSERT INTO layanan (nama_layanan, harga_layanan)
+            VALUES ('{nama_layanan}', '{harga_layanan}')
+            """
+            # Eksekusi query
+            cur.execute(query)
+            # Commit perubahan ke database
+            conn.commit()
+            # Mendapatkan jumlah baris yang terpengaruh oleh operasi terakhir
+            boolean = cur.rowcount
+            cur.close()
+            return boolean
+
+        def lihat_data_layanan(conn, cur):  # v
+            """Menampilkan data layanan dari database."""
+            cursor = conn.cursor()
+            # Query untuk mengambil semua data dari tabel 'layanan'
+            query = """
+            SELECT *
+            FROM layanan
+            """
+            cursor.execute(query)
+            # Mendapatkan semua data layanan
+            data_layanan = cursor.fetchall()
+            cursor.close()
+            
+            headers = ['ID', 'Nama Layanan', 'Harga Layanan']
+            # Menampilkan data layanan dalam bentuk tabel
+            print(tabulate.tabulate(data_layanan, headers=headers, tablefmt="grid"))
+
+        def ubah_data_layanan(conn, cur, layanan_baru, harga_baru, id_layanan):  # v
+            """Mengubah data layanan yang ada di database."""
+            updates = []
+
+            # Jika nama layanan baru diberikan, tambahkan ke daftar update
+            if layanan_baru:
+                updates.append(f"nama_layanan = '{layanan_baru}'")
+            # Jika harga layanan baru diberikan, tambahkan ke daftar update
+            if harga_baru:
+                updates.append(f"harga_layanan = '{harga_baru}'")
+
+            if updates:
+                # Query untuk mengubah data layanan berdasarkan id_layanan
+                query = f"UPDATE layanan SET {', '.join(updates)} WHERE id_layanan = {id_layanan}"
+                try:
+                    # Eksekusi query
+                    cur.execute(query)
+                    # Commit perubahan ke database
+                    conn.commit()
+                    cur.close()
+                    print("Data layanan telah diubah!")
+                except psycopg2.Error as e:
+                    print("Gagal mengubah data layanan:", e)
+                    # Rollback perubahan jika terjadi kesalahan
+                    conn.rollback()
+            else:
+                print("Tidak ada data yang diubah.")
+
+        def hapus_data_layanan(conn, cur, id_layanan):  # v
+            """Menghapus data layanan dari database."""
+            # Check apakah ada rekam medis yang terkait dengan layanan yang akan dihapus
+            cur.execute(f"SELECT COUNT(*) FROM rekam_medis WHERE id_layanan = {id_layanan}")
+            count = cur.fetchone()[0]
+
+            if count > 0:
+                print("Tidak dapat menghapus layanan karena masih ada rekam medis yang terkait.")
+                return False
+            else:
+                # Query untuk menghapus data layanan berdasarkan id_layanan
+                cur.execute("DELETE FROM layanan WHERE id_layanan = %s", (id_layanan,))
+                conn.commit()
+                if cur.rowcount > 0:
+                    print("Data layanan telah dihapus!")
+                    cur.close()
+                    return True
+                else:
+                    print("Layanan dengan ID tersebut tidak ditemukan.")
+                    cur.close()
+                    return False
+
+        conn, cur = postgresql_connect()
+        print("\nMenu layanan:")
+        print("[1] Tambah layanan")
+        print("[2] Lihat Data layanan")
+        print("[3] Ubah Data layanan")
+        print("[4] Hapus Data layanan")
+        print("[5] Exit")
+
+        pilihan = input("Masukkan pilihan Anda: ")
+
+        if pilihan == "1":
+            os.system('cls')
+            nama_layanan = input("Masukkan nama layanan: ")
+            harga_layanan = input("Masukkan harga layanan: ")
+            result = tambah_layanan(conn, cur, nama_layanan, harga_layanan)
+            if result:
+                print('Tambah data berhasil')
+            else:
+                print('Tambah data gagal')
+        elif pilihan == "2":
+            lihat_data_layanan(conn, cur)
+        elif pilihan == "3":
+            os.system('cls')
+            lihat_data_layanan(conn, cur)
+            id_layanan = int(input("Masukkan ID layanan yang ingin diubah: "))
+            layanan_baru = input("Masukkan nama layanan baru (kosongkan jika tidak ingin mengubah): ")
+            harga_baru = input("Masukkan harga layanan baru (kosongkan jika tidak ingin mengubah): ")
+            result = ubah_data_layanan(conn, cur, layanan_baru, harga_baru, id_layanan)
+        elif pilihan == "4":
+            os.system('cls')
+            lihat_data_layanan(conn, cur)
+            id_layanan = int(input("Masukkan ID layanan yang ingin dihapus: "))
+            hapus_data_layanan(conn, cur, id_layanan)
+        elif pilihan == "5":
+            os.system('cls')
+        else:
+            print("Pilihan tidak valid, silakan coba lagi.")
+        input("\n\nTekan [enter] untuk kembali ke Main Menu")
+        mode_admin(uname, nama_lengkap_logged)
 
     # 4.8 STAFF/ADMIN
     elif admin_choice == '8':
