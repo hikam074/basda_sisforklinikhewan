@@ -192,25 +192,152 @@ def launch_page():
 
 # 2. FITUR DOKTER ---------------------------------------------------------------------------------
 def mode_dokter(uname, nama_lengkap_logged):
+    def lihat_data_layanan(conn, cur):  # v
+        """Menampilkan data layanan dari database."""
+        cursor = conn.cursor()
+        # Query untuk mengambil semua data dari tabel 'layanan'
+        query = """
+        SELECT *
+        FROM layanan
+        """
+        cursor.execute(query)
+        # Mendapatkan semua data layanan
+        data_layanan = cursor.fetchall()
+        cursor.close()
+            
+        headers = ['ID', 'Nama Layanan', 'Harga Layanan']
+        # Menampilkan data layanan dalam bentuk tabel
+        print(tabulate.tabulate(data_layanan, headers=headers, tablefmt="grid"))
+
+    def rekam_medis_buat(conn, cur, uname): # fatal eror
+        nm_hwn=input('Nama hewan: ')
+        nm_plnggn=input('Nama pelanggan: ')
+        lihat_data_layanan(conn, cur)
+        id_layanan_hewan = input('masukkan id layanan')
+
+        hewannya= f"select id_hewan from hewan join where nama_hewan = '{nm_hwn}' and nama_pelanggan = '{nm_plnggn}'"
+        no_id_hewan=cur.execute(hewannya)
+
+        dokternya = f'select id_dokter from dokter where uname={uname}'
+        id_dokter=cur.execute(dokternya)
+
+        layanannya=f'select id_layananan from layanan where id_layanan={id_layanan_hewan}'
+        id_layanan=cur.execute(layanannya)
+
+        keterangan=input('Hasil Medis: ')
+        nilai=[no_id_hewan,id_dokter,id_layanan,keterangan]
+        sintaksi=f'insert into rekam_medis (id_hewan,id_dokter,id_layanan,hasil_medis) values({nilai})'
+        cur.execute(sintaksi)
+
+        postgresql_commit_nclose(conn, cur)
+
+    def rekam_medis_edit(conn, cur, uname): # fatal eror
+        print('[1] Nama Hewan\n[2] Nama Dokter\n[3] Layanan\n[4] Hasil Medis\n[5] Semua\n[Enter] Exit ')
+        pilih_lagi=input('Pilih: ')
+        hal_yang_dirubah=["hewan","dokter","layanan","rekam_medis"]
+        siapa_yang_dirubah=input("No id rekam medis yang akan dirubah:")
+        pilih=hal_yang_dirubah[int(pilih_lagi)-1]
+        if '0'<=pilih_lagi<='2':
+            ketik=input(f"Nama {pilih} yang benar: ")
+            pilihan=f'id_{pilih}'
+            sintaksi =f' select {pilihan} from {pilih} where nama_{pilih}={ketik}'
+            sintaksi_baru=f'update rekam_medis set id_{pilih}={sintaksis} where id_rekamed={siapa_yang_dirubah}'
+            cur.execute(sintaksi_baru)
+            conn.commit()
+            conn.close()
+            cur.close()
+        elif pilih_lagi=='3': 
+            baru=input("Hasil medis yang benar: ")
+            sintaksi_baru=f'update rekam_medis set hasil_medis={baru} where id_rekamed={siapa_yang_dirubah}'
+            cur.execute(sintaksi_baru)
+            conn.commit()
+            conn.close()
+            cur.close()
+        elif pilih_lagi=='4':
+            sintaksis1=[]
+            for i in range(len(hal_yang_dirubah)-1):
+                pilih=hal_yang_dirubah[i]
+                ketik=input(f"Nama {pilih} yang benar: ")
+                pilihan=f'id_{pilih}'
+                id +=f' select {pilihan} from {pilih} where nama_{pilih}={ketik}'
+            ketik=input("Hasil medis yang benar: ")
+            sintaksis= f"""update rekam_medis set id_hewan={id[0]},id_dokter={id[1]},id_layanan={id[2]},hasil_medis={ketik} where id_rekamed={siapa_yang_dirubah}"""
+            cur.execute(sintaksis)
+            conn.commit()
+            conn.close()
+            cur.close()
+        else:
+            print("Kembali ke halaman sebelumnya") 
+
+    conn, cur = postgresql_connect()
+
     print(f"selamat datang, {nama_lengkap_logged} !")
     print(" [1] Rekam Medis \n [2] Profil Anda \n [3] Log-out ")
     dokter_choice = input("Silahkan pilih menu anda : ")
 
-    # 2.1 REKAM MEDIS
+    # 2.1 REKAM MEDIS fatal eror
     if dokter_choice == '1':
-        pass
+        print('[1] Buat\n[2] Edit\n[3] Lihat')
+        pilihan=input('Pilih: ')
+        if pilihan=='1' or pilihan.lower() =='buat':
+            rekam_medis_buat(conn, cur, uname)
 
-    # 2.2 PROFIL ANDA
+        elif pilihan  == '2' or  pilihan.lower()=='edit':
+            rekam_medis_edit(conn, cur, uname)
+
+        elif pilihan=='3' or pilihan.lower()=='lihat':
+            sintaksis ="""select r.id_rekamed, h.nama_hewan,d.nama_dokter,l.nama_layanan, r.hasil_medis 
+            from rekam_medis r join hewan h on (h.id_hewan=r.id_hewan)
+            join dokter d on (d.id_dokter=r.id_dokter)
+            join layanan l on (l.id_layanan=r.id_layanan)"""
+            nilai=cur.execute(sintaksis)
+            header = ["Id Rekam Medis", "Nama Hewan", "Nama Dokter", "Nama Layanan","Hasil Medis"]
+            print(tabulate.tabulate(nilai,headers=header, tablefmt="fancy_grid"))
+
+            postgresql_commit_nclose(conn, cur)
+
+        elif pilihan=='4':
+            id=input('Id rekam medis yang akan di hapus')
+            sintaksis_hapus= f"DELETE FROM rekam_medis WHERE id_rekamed = '{id}' " 
+            cur.execute(sintaksis_hapus)
+            postgresql_commit_nclose(conn, cur)
+
+        mode_dokter(uname, nama_lengkap_logged)
+
+    # 2.2 PROFIL ANDA v
     elif dokter_choice == '2':
-        pass
+        print('[1] Lihat\n[2] Edit')
+        pilihan_anda=input('Pilih: ')
 
-    # 2.3 EXIT
+        if pilihan_anda=='1':
+            sintaksis=f"select * from dokter where uname_dokter = '{uname}'"
+            cur.execute(sintaksis)
+            nilai = cur.fetchall()
+            header = ["Id Dokter", "Nama Dokter", "Telp Dokter", "Nama Layanan","Hasil Medis"]
+            print(tabulate.tabulate(nilai,headers=header, tablefmt="fancy_grid"))
+
+        elif pilihan_anda=='2':
+            simpan=["nama_dokter","tlp_dokter","no_stp","uname_dokter","pw_dokter"]
+            for i,value in enumerate(simpan):
+                yes=input(f'Apakah {value} salah? (y/t)')
+                if yes=='y':
+                    if value == 'tlpn_dokter':
+                        update=input('Perbaiki: ')
+                        sintaksis= f"update dokter set {simpan[i]}= {update} where uname_dokter='{uname}'"
+                    else:
+                        update=input('Perbaiki: ')
+                        sintaksis= f"update dokter set {simpan[i]}= '{update}' where uname_dokter='{uname}'"
+                    cur.execute(sintaksis)
+            postgresql_commit_nclose(conn, cur)
+        mode_dokter(uname, nama_lengkap_logged)
+
+    # 2.3 EXIT v
     elif dokter_choice == '3':
-        pass
+        launch_page()
 
     # BILA SALAH INPUT
     else:
-        mode_dokter()
+        mode_dokter(uname, nama_lengkap_logged)
 
 # -------------------------------------------------------------------------------------------------
 
@@ -611,8 +738,9 @@ def mode_admin(uname, nama_lengkap_logged):
         pass
     # 4.9 EXIT
     elif admin_choice == '9':
-        pass
+        launch_page()
 
+    mode_admin(uname, nama_lengkap_logged)
 # -------------------------------------------------------------------------------------------------
 
 # FITUR MANUAL BOOK -------------------------------------------------------------------------------
