@@ -733,10 +733,230 @@ def mode_admin(uname, nama_lengkap_logged):
         input("\n\nTekan [enter] untuk kembali ke Main Menu")
         mode_admin(uname, nama_lengkap_logged)
 
-    # 4.8 STAFF/ADMIN
+    # 4.8 STAFF/ADMIN v
     elif admin_choice == '8':
-        pass
-    # 4.9 EXIT
+        def lihat_data_staf():
+            conn, cur = postgresql_connect()
+            """Menampilkan data staf dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+           
+            query = """
+            SELECT * FROM staf
+            """
+           
+            cur.execute(query)
+            # Mengambil semua data hasil query
+            data_staf = cur.fetchall()
+
+
+            postgresql_cls(conn, cur)
+           
+            # Headers untuk tabel yang akan ditampilkan
+            headers = ["ID", 'Nama Staf', 'Telepon', 'Username', 'Password']
+           
+            # Menampilkan data dalam format tabel
+            print(tabulate.tabulate(data_staf, headers=headers, tablefmt="grid"))  
+
+
+        choice_8 = input("\n[1] Tambah Data Staf\n[2] Lihat Data Staf\n[3] Edit Data Staf\n[4] Hapus Data Staf\nPilih menu : ")
+        if choice_8 == '1':    
+            os.system('cls')  
+            #Input Data Staf
+            conn, cur = postgresql_connect()
+            nama_staf     = input("1. Masukkan nama staf: ")
+            tlp_staf      = input("2. Masukkan nomor telepon staf: ")
+            uname_staf    = input("3. Masukkan username staf: ")
+            pw_staf       = input("4. Masukkan password staf: ")
+
+
+            # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
+            result = False
+            if not nama_staf or not tlp_staf or not uname_staf or not pw_staf:
+                print("Semua field harus diisi!")
+                return False
+            else:
+                """Menambahkan data staf baru ke database."""
+                cur = conn.cursor()
+               
+                query = """
+                INSERT INTO staf (nama_staf, tlp_staf, uname_staf, pw_staf)
+                VALUES (%s, %s, %s, %s)
+                """
+               
+                # Menjalankan query dengan data yang diberikan
+                cur.execute(query, (nama_staf, tlp_staf, uname_staf, pw_staf))
+               
+                # Melakukan commit perubahan ke database
+                conn.commit()
+               
+                # Mengambil jumlah baris yang dimodifikasi oleh query
+                boolean = cur.rowcount
+               
+                # Menutup cursor
+                cur.close()
+               
+                print("staf baru telah ditambahkan!")
+                result = True
+
+
+            if result:
+                input('Tambah data berhasil')
+            else:
+                input('Tambah data gagal')
+            mode_admin(uname, nama_lengkap_logged)
+        elif choice_8 == '2':   # Lihat data staf v
+            lihat_data_staf()
+            input("\n\nTekan [enter] untuk kembali ke Menu staf")
+            mode_admin(uname, nama_lengkap_logged)
+        elif choice_8 == '3':   # Edit data staf v
+            os.system('cls')
+            # Meminta ID staf yang ingin diubah
+            lihat_data_staf()
+            id_staf = int(input("Masukkan ID staf yang ingin diubah: "))
+           
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Mengecek apakah ID staf ada dalam database
+                cur.execute("SELECT COUNT(*) FROM staf WHERE id_staf = %s", (id_staf,))
+                if cur.fetchone()[0] == 0:
+                    print("Maaf, ID staf yang Anda cari tidak ada. Silakan cek kembali.")
+                    postgresql_cls(conn, cur)
+                    input("\n\nTekan [enter] untuk kembali ke Menu staf")
+                    mode_admin(uname, nama_lengkap_logged)
+                    return
+               
+                # Meminta data baru dari user
+                nama_baru = input("Masukkan nama baru staf (kosongkan jika tidak ingin mengubah): ")
+                telp_baru = input("Masukkan nomor telepon baru staf (kosongkan jika tidak ingin mengubah): ")
+                uname_baru = input("Masukkan username baru staf (kosongkan jika tidak ingin mengubah): ")
+                password_baru = input("Masukkan password baru staf (kosongkan jika tidak ingin mengubah): ")
+
+
+                # List untuk menyimpan bagian query yang akan diupdate
+                updates = []
+               
+                # List untuk menyimpan nilai yang akan diisi dalam query
+                values = []
+
+
+                # Mengecek apakah ada nilai baru untuk nama_staf dan menambahkannya ke query jika ada
+                if nama_baru:
+                    updates.append("nama_staf = %s")
+                    values.append(nama_baru)
+               
+                # Mengecek apakah ada nilai baru untuk tlp_staf dan menambahkannya ke query jika ada
+                if telp_baru:
+                    updates.append("tlp_staf = %s")
+                    values.append(telp_baru)
+               
+                # Mengecek apakah ada nilai baru untuk uname_staf dan menambahkannya ke query jika ada
+                if uname_baru:
+                    updates.append("uname_staf = %s")
+                    values.append(uname_baru)
+               
+                # Mengecek apakah ada nilai baru untuk pw_staf dan menambahkannya ke query jika ada
+                if password_baru:
+                    updates.append("pw_staf = %s")
+                    values.append(password_baru)
+
+
+                # Menambahkan id_staf ke values, ini diperlukan untuk klausa WHERE
+                values.append(id_staf)
+
+
+                # Jika ada data yang diupdate
+                if updates:
+                    # Membuat query update dengan bagian yang perlu diupdate
+                    query = f"UPDATE staf SET {', '.join(updates)} WHERE id_staf = %s"
+                    try:
+                        # Menjalankan query dengan nilai yang disediakan
+                        cur.execute(query, values)
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        print("Data staf telah diubah!")
+                    except psycopg2.Error as e:
+                        # Menampilkan pesan kesalahan jika gagal melakukan update
+                        print("Gagal mengubah data staf:", e)
+                       
+                        # Melakukan rollback jika terjadi kesalahan
+                        conn.rollback()
+                else:
+                    # Pesan jika tidak ada data yang diubah
+                    print("Tidak ada data yang diubah.")
+            except psycopg2.Error as e:
+                # Menangani kesalahan koneksi atau query
+                print(f"Terjadi kesalahan: {e}")
+                conn.rollback()
+            finally:
+                # Menutup kursor dan koneksi
+                cur.close()
+                conn.close()
+               
+            input("\n\nTekan [enter] untuk kembali ke Menu staf")
+            mode_admin(uname, nama_lengkap_logged)
+
+
+           
+        elif choice_8 == '4':   # Hapus data staf v
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            lihat_data_staf()
+
+
+            id_staf = int(input("Masukkan ID staf yang ingin dihapus: "))
+            """Menghapus data staf dari database."""
+
+
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Memeriksa apakah ada reservasi yang terkait dengan staf ini
+                cur.execute("SELECT COUNT(*) FROM reservasi WHERE id_staf = %s", (id_staf,))
+                count_reservasi = cur.fetchone()[0]
+               
+                # Memeriksa apakah ada detail transaksi yang terkait dengan staf ini
+                cur.execute("SELECT COUNT(*) FROM detail_transaksi WHERE id_staf = %s", (id_staf,))
+                count_detail_transaksi = cur.fetchone()[0]
+
+
+                # Jika ada referensi terkait, hapus referensi tersebut terlebih dahulu
+                if count_reservasi > 0:
+                    cur.execute("DELETE FROM reservasi WHERE id_staf = %s", (id_staf,))
+                if count_detail_transaksi > 0:
+                    cur.execute("DELETE FROM detail_transaksi WHERE id_staf = %s", (id_staf,))
+               
+                # Menghapus data staf dari tabel staf
+                cur.execute("DELETE FROM staf WHERE id_staf = %s", (id_staf,))
+               
+                # Melakukan commit perubahan ke database
+                conn.commit()
+               
+                # Memeriksa apakah ada baris yang dihapus
+                if cur.rowcount > 0:
+                    print("Data staf telah dihapus!")
+                    result = True
+                else:
+                    print("Staf dengan ID tersebut tidak ditemukan.")
+                    result = False
+            except Exception as e:
+                print(f"Terjadi kesalahan: {e}")
+                result = False
+                conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+            finally:
+                cur.close()  # Menutup kursor
+                conn.close()  # Menutup koneksi
+           
+            input("\n\nTekan [enter] untuk kembali ke Menu staf")
+            mode_admin(uname, nama_lengkap_logged)
+           
+            if result == True:
+                print('Data berhasil terhapus')
+            else:
+                print('Data gagal dihapus')
+
+    # 4.9 EXIT v
     elif admin_choice == '9':
         launch_page()
 
