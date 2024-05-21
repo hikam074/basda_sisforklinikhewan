@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import tabulate
+import pandas as pd
 
 # SESUAIKAN DENGAN POSTGRE KALIAN -----------------------------------------------------------------
 def postgresql_connect():                   # menghubungkan postgresql dan python
@@ -27,7 +28,7 @@ def postgresql_cls(conn, cur):              # tutup
     cur.close()
     conn.close()
 
-def posgresql_alldata_akun(conn, cur):      # memasukkan semua data akun ke satu variabel
+def postgresql_alldata_akun(conn, cur):      # memasukkan semua data akun ke satu variabel
     cur.execute('SELECT * FROM pelanggan')
     listdatapelanggan = cur.fetchall()
     cur.execute('SELECT * FROM staf')
@@ -207,7 +208,7 @@ def mode_dokter(uname, nama_lengkap_logged):
             
         headers = ['ID', 'Nama Layanan', 'Harga Layanan']
         # Menampilkan data layanan dalam bentuk tabel
-        print(tabulate.tabulate(data_layanan, headers=headers, tablefmt="grid"))
+        print(tabulate.tabulate(data_layanan, headers=headers, tablefmt=f"{format_table}"))
 
     def rekam_medis_buat(conn, cur, uname): # fatal eror
         nm_hwn=input('Nama hewan: ')
@@ -292,7 +293,7 @@ def mode_dokter(uname, nama_lengkap_logged):
             join layanan l on (l.id_layanan=r.id_layanan)"""
             nilai=cur.execute(sintaksis)
             header = ["Id Rekam Medis", "Nama Hewan", "Nama Dokter", "Nama Layanan","Hasil Medis"]
-            print(tabulate.tabulate(nilai,headers=header, tablefmt="fancy_grid"))
+            print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
 
             postgresql_commit_nclose(conn, cur)
 
@@ -314,7 +315,7 @@ def mode_dokter(uname, nama_lengkap_logged):
             cur.execute(sintaksis)
             nilai = cur.fetchall()
             header = ["Id Dokter", "Nama Dokter", "Telp Dokter", "Nama Layanan","Hasil Medis"]
-            print(tabulate.tabulate(nilai,headers=header, tablefmt="fancy_grid"))
+            print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
 
         elif pilihan_anda=='2':
             simpan=["nama_dokter","tlp_dokter","no_stp","uname_dokter","pw_dokter"]
@@ -343,21 +344,183 @@ def mode_dokter(uname, nama_lengkap_logged):
 
 # 3. FITUR KUSTOMER -------------------------------------------------------------------------------
 def mode_pelanggan(uname, nama_lengkap_logged):
+    # ambil data id_pelanggan
+    conn, cur = postgresql_connect()
+    cur.execute(f"SELECT id_pelanggan FROM pelanggan WHERE uname_pelanggan = '{uname}'")
+    id_pelanggan = cur.fetchone()
+    id_pelanggan = str(id_pelanggan).strip(")(,")
+    postgresql_cls(conn, cur)
+
+    os.system('cls')
     print(f"Selamat datang, {nama_lengkap_logged} !")
-    print(" [1] RESERVASI \n [2] Hewan Peliharaan anda \n [3] Rekam Medis Hewan Anda \n [4] Riwayat Kunjungan Anda \n [5] Profil Anda \n [6] Lihat Dokter \n [7] Layanan Kami \n [8] Log-Out")
+    print(" [1] RESERVASI ANDA\n [2] Hewan Peliharaan anda \n [3] Rekam Medis Hewan Anda \n [4] Riwayat Kunjungan Anda \n [5] Profil Anda \n [6] Lihat Dokter \n [7] Layanan Kami \n [8] Log-Out")
     pelanggan_choice = input("Silahkan pilih menu anda : ")
 
-    # 3.1 RESERVASI
+    # 3.1 RESERVASI mid
     if pelanggan_choice == '1':
-        pass
+        conn, cur = postgresql_connect()
+        listdata = postgresql_alldata_akun(conn, cur)
+
+        print("1. Edit Reservasi")
+        print("2. Lihat Daftar Rencana dan Rincian Reservasi")
+        inputmenu = input("Masukan menu yang diinginkan")
+
+        if inputmenu == '1':    # edit reservasi
+            cur.execute('SELECT * FROM reservasi')
+            datareservasi = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(datareservasi, headers=headers, tablefmt=f"{format_table}"))
+            editnomor = int(input("Pilih id yang ingin di edit"))
+            
+        elif inputmenu == '2':  #lihat riwayat reservasi
+            cur.execute(f"Select r.id_reservasi, r.reservasi_tgl_layanan||' '||r.reservasi_waktu_layanan as reservasi_untuk, h.nama_hewan, s.nama_staf from reservasi r join hewan h on (h.id_hewan = r.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join staf s on (r.id_staf = s.id_staf) WHERE p.uname_pelanggan = '{uname}'")
+            datareservasi = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(datareservasi, headers=headers, tablefmt=f"{format_table}"))
+            lihatnomor = int(input("Masukan id reservasi yang ingin dilihat rinci"))
+            cur.execute(f"Select r.id_reservasi, r.reservasi_tgl_layanan||' '||r.reservasi_waktu_layanan as reservasi_untuk, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, s.nama_staf from reservasi r join hewan h on (h.id_hewan = r.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join staf s on (r.id_staf = s.id_staf) where id_reservasi = '{lihatnomor}'")
+            lihatdata = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(lihatdata, headers=headers, tablefmt=f"{format_table}"))
+
+            postgresql_cls(conn, cur)
+            input("Tekan [Enter] untuk kembali")
+
 
     # 3.2 HEWAN PELIHARAAN ANDA
     elif pelanggan_choice == '2':
-        pass
+        conn, cur = postgresql_connect()
+        print(" 1. Tambah Data Hewan Peliharaan")
+        print(" 2. Lihat Data Hewan Peliharaan Anda")
+        print(" 3. Ubah Data Hewan Anda")
+        print(" 4. Hapus Data Hewan Anda")
+        inputmenu = input("Masukan opsi selanjutnya : ")
+        if inputmenu == '1':    # tambah hewan v
+            cur.execute('SELECT * FROM jenis_hewan')
+            datahewan = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(datahewan, headers=headers, tablefmt=f"{format_table}"))
 
-    # 3.3 REKAM MEDIS HEWAN
+            jenishewan = input("Masukan ID Jenis Hewan Anda : ")
+            nama_hewan = input("Masukan Nama Hewan Anda : ")
+            tanggallahir = input("Masukan Tanggal Lahir Hewan Anda (yyyy-mm-dd) : ")
+            try:
+                cur.execute(f"INSERT INTO hewan (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan) VALUES ('{nama_hewan}', '{tanggallahir}', {id_pelanggan}, {jenishewan})")
+                postgresql_commit_nclose(conn, cur)
+                print("Data berhasil ditambahkan!")
+            except psycopg2.Error as e:
+                print(e)
+                postgresql_cls(conn, cur)
+                print("Terdapat kesalahan pada data hewan, silahkan coba lagi")
+        
+        elif inputmenu == '2':  # lihat list hewan anda v
+            cur.execute(f"Select h.id_hewan, h.nama_hewan, jh.nama_jenis, h.tanggal_lahir, p.nama_pelanggan from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan}")
+            lihatdata = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(lihatdata, headers=headers, tablefmt=f"{format_table}"))
+            postgresql_cls(conn, cur)
+
+        elif inputmenu == '3':  # edit data hewan mid
+            cur.execute(f'select h.id_hewan, h.nama_hewan, h.tanggal_lahir, jh.nama_jenis from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan}')
+            datahewan = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(datahewan, headers=headers, tablefmt=f"{format_table}"))
+
+            dataygdiubah = int(input("masukan no id_hewan yang ingin dirubah "))
+            cur.execute(f'select h.id_hewan, h.nama_hewan, h.tanggal_lahir, jh.nama_jenis from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan} and h.id_hewan = {dataygdiubah}')
+            datahewan = cur.fetchall()
+            headers = [i[0] for i in cur.description]
+            print(tabulate.tabulate(datahewan, headers=headers, tablefmt=f"{format_table}"))
+
+            nama_hewan = input('masukan nama hewan baru')
+            tanggallahir = input('masukan tanggal lahir baru')
+            namajenis = input('masukan namajenis')
+
+        elif inputmenu == '4':  # hapus data hewan
+            pass
+        
+        input("Tekan [Enter] untuk kembali ke menu : ")
+        mode_pelanggan(uname, nama_lengkap_logged)
+
+    # 3.3 REKAM MEDIS HEWAN v
     elif pelanggan_choice == '3':
-        pass
+        def menu_pelanggan_4(uname, nama_lengkap_logged):
+            os.system('cls')
+            conn, cur = postgresql_connect()
+            print(" 1. Cari Berdasarkan Tanggal")
+            print(" 2. Cari Berdasarkan Jenis Hewan")
+            print(" 3. Cari Berdasarkan id Hewan")
+            print(" 4. Cari Berdasarkan id Dokter")
+            print(" 5. Kembali ke MENU UTAMA")
+            inputmenu = input('Silahkan Masukan Menu Rekam Medis! : ')
+
+            if inputmenu == '1':
+                #MENAMPILKAN RINCIAN TANGGAL
+                tanggal = input('Masukan Tanggal Reservasi yang Ingin Dicari! : ')
+                cur.execute(f"select r.id_rekamed, r.tgl_waktu_pemeriksaan, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) where p.id_pelanggan = {id_pelanggan} AND TO_CHAR(tgl_waktu_pemeriksaan :: DATE, 'yyyy-mm-dd') = TO_CHAR(tgl_waktu_pemeriksaan :: DATE, '{tanggal}')")
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                os.system('cls')
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                postgresql_cls(conn, cur)
+                input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")  
+
+            elif inputmenu == '2':
+                #MENAMPILKAN RINCIAN JENIS HEWAN
+                os.system('cls')
+                cur.execute("SELECT * FROM jenis_hewan")
+                datajenishewan = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                print(tabulate.tabulate(datajenishewan, headers=headers, tablefmt=f"{format_table}"))
+                jenishewan = input('Masukan ID Jenis Hewan yang Ingin Dicari! : ')
+                cur.execute(f'select r.id_rekamed, jh.nama_jenis, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where jh.id_jenishewan = {jenishewan} AND h.id_pelanggan = {id_pelanggan}')
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                os.system('cls')
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                postgresql_cls(conn, cur)
+                input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")  
+
+            elif inputmenu == '3':
+                #MENAMPILKAN RINCIAN AWAL
+                cur.execute(f"SELECT h.id_hewan, h.nama_hewan, h.tanggal_lahir, j.nama_jenis FROM hewan h JOIN jenis_hewan j ON (h.id_jenishewan = j.id_jenishewan) WHERE id_pelanggan = {id_pelanggan}")
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                #MENAMPILKAN RINCIAN IDHEWAN
+                idhewan = input('Masukan Id Hewan pada Rekam Medis yang Ingin Dicari! : ')
+                cur.execute(f'select r.id_rekamed,h.id_hewan, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_hewan = {idhewan}')
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                postgresql_cls(conn, cur)
+                input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")  
+
+            elif inputmenu == '4':
+                #MENAMPILKAN RINCIAN AWAL  
+                cur.execute(f"SELECT d.id_dokter, d.nama_dokter FROM dokter d JOIN rekam_medis r ON (r.id_dokter = d.id_dokter) WHERE r.id_dokter = d.id_dokter")
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                os.system('cls')
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                #MENAMPILKAN RINCIAN IDDOKTER
+                iddokter = input('Masukan Id Dokter pada Rekam Medis yang Ingin Dicari! : ')
+                cur.execute(f'select r.id_rekamed, d.id_dokter, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where d.id_dokter = {iddokter} and p.id_pelanggan = {id_pelanggan}')
+                datarekammedis = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                os.system('cls')
+                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                postgresql_cls(conn, cur)
+                input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")  
+
+            elif inputmenu == '5':
+                mode_pelanggan(uname, nama_lengkap_logged)
+            
+            menu_pelanggan_4(uname, nama_lengkap_logged)
+
+        menu_pelanggan_4(uname, nama_lengkap_logged)
 
     # 3.4 KUNJUNGAN ANDA
     elif pelanggan_choice == '4':
@@ -375,13 +538,15 @@ def mode_pelanggan(uname, nama_lengkap_logged):
     elif pelanggan_choice == '7':
         pass
 
-    # 3.8 EXIT
+    # 3.8 EXIT v
     elif pelanggan_choice == '8':
-        pass
+        launch_page()
 
-    # BILA SALAH INPUT
+    # BILA SALAH INPUT v
     else :
-        pass
+        mode_pelanggan(uname, nama_lengkap_logged)
+
+    
 
 # -------------------------------------------------------------------------------------------------
 
@@ -392,25 +557,917 @@ def mode_admin(uname, nama_lengkap_logged):
     print(" [1] RESERVASI \n [2] TRANSAKSI \n [3] Data Rekam Medis \n [4] Data Kustomer \n [5] Data Hewan Peliharaan \n [6] Data Dokter \n [7] Layanan \n [8] Staff/Admin \n [9] Log-out")
     admin_choice = input("Silahkan pilih menu anda : ")
 
-    # 4.1 RESERVASI
+    # 4.1 RESERVASI v
     if admin_choice == '1':
-        pass
+        # Fungsi untuk membuat daftar hewan yang tersedia dalam database
+        def list_animals(conn):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk mendapatkan ID dan nama hewan
+            cur.execute("SELECT id_hewan, nama_hewan FROM hewan")
+            # Mengambil semua baris hasil kueri
+            animals = cur.fetchall()
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+            # Mengembalikan daftar hewan
+            return animals
+
+        # Fungsi untuk memeriksa apakah data pelanggan sudah ada dalam database
+        def check_customer_exists(conn, id_pelanggan):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk memeriksa keberadaan data pelanggan
+            cur.execute("SELECT EXISTS(SELECT 1 FROM customers WHERE id_pelanggan=%s)", (id_pelanggan,))
+            # Mengambil hasil kueri dan mengekstrak nilai eksistensinya
+            exists = cur.fetchone()[0]
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+            # Mengembalikan hasil eksistensi
+            return exists
+
+        # Fungsi untuk mengambil ID staf berdasarkan username dari database
+        def get_staff_id_by_username(conn, uname):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk mendapatkan ID staf berdasarkan username
+            cur.execute("SELECT id_staf FROM staf WHERE uname_staf = %s", (uname,))
+            # Mengambil hasil kueri dan mengekstrak ID staf jika ada
+            id_staf = cur.fetchone()
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+            # Mengembalikan ID staf atau None jika tidak ditemukan
+            return id_staf[0] if id_staf else None
+
+        # Fungsi untuk melakukan reservasi
+        def make_reservation(conn, reservation_data):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk menyimpan data reservasi ke database
+            cur.execute("""
+                INSERT INTO reservasi (id_hewan, id_staf, reservasi_tgl_layanan, reservasi_waktu_layanan)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                reservation_data['id_hewan'],
+                reservation_data['id_staf'],
+                reservation_data['reservasi_tgl_layanan'],
+                reservation_data['reservasi_waktu_layanan']
+            ))
+            # Melakukan commit untuk menyimpan perubahan ke database
+            conn.commit()
+
+            # Mengambil id_reservasi dengan kueri terpisah
+            cur.execute("SELECT id_reservasi FROM reservasi WHERE id_hewan = %s AND id_staf = %s AND reservasi_tgl_layanan = %s AND reservasi_waktu_layanan = %s",
+                        (
+                            reservation_data['id_hewan'],
+                            reservation_data['id_staf'],
+                            reservation_data['reservasi_tgl_layanan'],
+                            reservation_data['reservasi_waktu_layanan']
+                        ))
+            # Mengambil id_reservasi jika tersedia atau None jika tidak
+            id_reservasi = cur.fetchone()[0] if cur.rowcount else None
+
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+            # Mengembalikan id_reservasi hasil reservasi
+            return id_reservasi
+
+        # Fungsi untuk mengedit reservasi
+        def edit_reservation(conn, id_reservasi, reservation_data):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            updates = []
+            values = []
+
+            # Mengecek setiap item dalam data reservasi untuk menentukan perubahan yang diperlukan
+            if 'id_hewan' in reservation_data:
+                updates.append("id_hewan = %s")
+                values.append(reservation_data['id_hewan'])
+            if 'id_staf' in reservation_data:
+                updates.append("id_staf = %s")
+                values.append(reservation_data['id_staf'])
+            if 'reservasi_tgl_layanan' in reservation_data:
+                updates.append("reservasi_tgl_layanan = %s")
+                values.append(reservation_data['reservasi_tgl_layanan'])
+            if 'reservasi_waktu_layanan' in reservation_data:
+                updates.append("reservasi_waktu_layanan = %s")
+                values.append(reservation_data['reservasi_waktu_layanan'])
+
+            # Menambahkan id_reservasi ke dalam values untuk kueri UPDATE
+            values.append(id_reservasi)
+            
+            # Membuat kueri UPDATE berdasarkan perubahan yang diperlukan
+            update_query = f"UPDATE reservasi SET {', '.join(updates)} WHERE id_reservasi = %s"
+            # Menjalankan kueri UPDATE untuk memperbarui data reservasi
+            cur.execute(update_query, tuple(values))
+            # Melakukan commit untuk menyimpan perubahan ke database
+            conn.commit()
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+
+        # Fungsi untuk menghapus reservasi
+        def delete_reservation(conn, id_reservasi):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk menghapus data reservasi dari database
+            cur.execute("DELETE FROM reservasi WHERE id_reservasi = %s", (id_reservasi,))
+            # Melakukan commit untuk menyimpan perubahan ke database
+            conn.commit()
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+
+        # Fungsi untuk melihat rincian reservasi
+        def view_reservation(conn):
+            # Membuka kursor untuk mengirim kueri SQL ke database
+            cur = conn.cursor()
+            # Menjalankan kueri SQL untuk mendapatkan rincian reservasi dari database
+            cur.execute("select r.id_reservasi, h.nama_hewan, s.nama_staf, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from reservasi r join hewan h ON (h.id_hewan = r.id_hewan) join staf s ON (s.id_staf = r.id_staf)")
+            # Mengambil semua baris hasil kueri
+            reservasi = cur.fetchall()
+            # Menutup kursor setelah selesai digunakan
+            cur.close()
+            
+            # Menampilkan rincian reservasi dalam format tabel
+            headers = ['ID', 'Nama Hewan', 'Nama Staf', 'Tanggal Layanan', 'Waktu Layanan']
+            print(tabulate.tabulate(reservasi, headers=headers, tablefmt=f"{format_table}"))
+            # Mengembalikan daftar reservasi
+            return reservasi
+
+        # Fungsi utama untuk manajemen reservasi
+        def main_reservasi():
+            # Membuat koneksi ke database PostgreSQL
+            conn, cur = postgresql_connect()
+            if conn:
+                while True:
+                    # Membersihkan layar konsol
+                    os.system('cls')
+                    print("\nReservation Menu:")
+                    print("1. tambah Reservasi")
+                    print("2. lihat Reservasi")
+                    print("3. edit Reservasi")
+                    print("4. hapus Reservasi")
+                    print("5. Exit")
+                    choice = input("Masukkan Pilihan: ")
+
+                    if choice == '1':
+                        os.system('cls')
+                        # Menampilkan daftar hewan yang tersedia
+                        print("Hewan yang Tersedia:")
+                        animals = list_animals(conn)
+                        for animal in animals:
+                            print(f"ID: {animal[0]}, Name: {animal[1]}")
+                        
+                        # Meminta input untuk reservasi
+                        id_hewan = input("Masukkan ID Hewan: ")
+                        id_staf = get_staff_id_by_username(conn, uname)
+                        
+                        if id_staf is None:
+                            print("Staf tidak ditemukan.")
+                            continue
+                        
+                        reservasi_tgl_layanan = input("Masukkan Tanggal Reservasi (YYYY-MM-DD): ")
+                        reservasi_waktu_layanan = input("Masukkan Waktu Reservasi (HH:MM:SS): ")
+                        
+                        # Menyusun data reservasi
+                        reservation_data = {
+                            'id_hewan': id_hewan,
+                            'id_staf': id_staf,
+                            'reservasi_tgl_layanan': reservasi_tgl_layanan,
+                            'reservasi_waktu_layanan': reservasi_waktu_layanan
+                        }
+                        
+                        # Membuat reservasi
+                        id_reservasi = make_reservation(conn, reservation_data)
+                        
+                        # Menampilkan pesan keberhasilan atau kegagalan reservasi
+                        if id_reservasi:
+                            print(f"Reservasi berhasil.")
+                        else:
+                            print("Reservasi Gagal. Coba lagi.")
+
+                        input("\n\nTekan [enter] untuk kembali ke Menu Reservasi")
+                        main_reservasi()
+
+                    elif choice == '2':
+                        os.system('cls')
+                        # Melihat rincian reservasi
+                        view_reservation(conn)
+                        input("\n\nTekan [enter] untuk kembali ke Menu Reservasi")
+                        main_reservasi()
+
+                    elif choice == '3':
+                        os.system('cls')
+                        # Melihat rincian reservasi sebelum mengedit
+                        view_reservation(conn)
+                        id_reservasi = input("Masukkan ID Reservasi yang ingin diubah: ")
+                        print("Masukkan data baru (biarkan kosong jika tidak ingin diubah):")
+                        id_hewan = input("Masukkan ID Hewan baru: ")
+                        id_staf = input("Masukkan ID staf baru: ")
+                        reservasi_tgl_layanan = input("Masukkan Tanggal Reservasi Baru (YYYY-MM-DD): ")
+                        reservasi_waktu_layanan = input("Masukkan Waktu Reservasi Baru  (HH:MM:SS): ")
+                        
+                        # Menyusun data reservasi yang akan diubah
+                        reservation_data = {}
+                        if id_hewan:
+                            reservation_data['id_hewan'] = id_hewan
+                        if id_staf:
+                            reservation_data['id_staf'] = id_staf
+                        if reservasi_tgl_layanan:
+                            reservation_data['reservasi_tgl_layanan'] = reservasi_tgl_layanan
+                        if reservasi_waktu_layanan:
+                            reservation_data['reservasi_waktu_layanan'] = reservasi_waktu_layanan
+                        
+                        # Mengedit reservasi
+                        edit_reservation(conn, id_reservasi, reservation_data)
+                        print("Reservasi Berhasil Diperbahui.")
+                        input("\n\nTekan [enter] untuk kembali ke Menu Reservasi")
+                        main_reservasi()
+
+                    elif choice == '4':
+                        os.system('cls')
+                        # Melihat rincian reservasi sebelum menghapus
+                        view_reservation(conn)
+                        id_reservasi = input("Masukkan ID Reservasi yang ingin dihapus: ")
+                        # Menghapus reservasi
+                        delete_reservation(conn, id_reservasi)
+                        print("Reservasi berhasil dihapus.")
+                        input("\n\nTekan [enter] untuk kembali ke Menu Reservasi")
+                        main_reservasi()
+
+                    elif choice == '5':
+                        os.system('cls')
+                        mode_admin(uname, nama_lengkap_logged)
+
+                    else:
+                        print("Pilihan tidak valid, silakan coba lagi..")
+
+                # Menutup koneksi ke database setelah selesai digunakan
+                conn.close()
+            else:
+                print("Gagal Menghubungkan ke database")
+
+        main_reservasi()
 
     # 4.2 TRANSAKSI
     elif admin_choice == '2':
         pass
 
-    # 4.3 DATA REKAM MEDIS
+    # 4.3 DATA REKAM MEDIS v
     elif admin_choice == '3': 
-        pass
+        def lihat_data_rekammedis():
+            conn, cur = postgresql_connect()
+            """Menampilkan data rekam medis dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+           
+            query = """
+            SELECT
+                rm.id_rekamed, hew.nama_hewan, pel.nama_pelanggan, dok.nama_dokter, lay.nama_layanan, rm.tgl_waktu_pemeriksaan, rm.hasil_medis, rm.catatan_tambahan
+            FROM rekam_medis rm
+            JOIN hewan hew on hew.id_hewan = rm.id_hewan
+            JOIN pelanggan pel on pel.id_pelanggan = hew.id_pelanggan
+            JOIN dokter dok on dok.id_dokter = rm.id_dokter
+            JOIN layanan lay on lay.id_layanan = rm.id_layanan
+            """
+           
+            cur.execute(query)
+            # Mengambil semua data hasil query
+            data_rekammedis = cur.fetchall()
+
+            postgresql_cls(conn, cur)
+           
+            # Headers untuk tabel yang akan ditampilkan
+            headers = [i[0] for i in cur.description]
+           
+            # Menampilkan data dalam format tabel
+            print(tabulate.tabulate(data_rekammedis, headers=headers, tablefmt=f"{format_table}"))  
+
+        choice_3 = input("\n[1] Tambah Data Rekam Medis\n[2] Lihat Data Rekam Medis\n[3] Edit Data Rekam Medis\n[4] Hapus Data Rekam Medis\nPilih menu : ")
+        if choice_3 == '1':     # tambah data rekam medis v
+            os.system('cls')  
+            #Input Data rekam medis
+            conn, cur = postgresql_connect()
+            id_hewan                = input("1. Masukkan id hewan: ")
+            id_dokter               = input("2. Masukkan id_dokter: ")
+            id_layanan              = input("3. Masukkan id_layanan: ")
+            tgl_waktu_pemeriksaan   = input("4. Masukkan tgl_waktu_pemeriksaan: ")
+            hasil_medis             = input("5. Masukkan hasil_medis: ")
+            catatan_tambahan        = input("6. Masukkan catatan_tambahan : ")
+
+            # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
+            result = False
+            if not id_hewan or not id_dokter or not id_layanan or not tgl_waktu_pemeriksaan or not hasil_medis:
+                print("Semua field harus diisi!")
+                return False
+            else:
+                """Menambahkan data rekam medis baru ke database."""
+                cur = conn.cursor()
+               
+                query = """
+                INSERT INTO rekam_medis (id_hewan, id_dokter, id_layanan, tgl_waktu_pemeriksaan, hasil_medis, catatan_tambahan)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+               
+                # Menjalankan query dengan data yang diberikan
+                cur.execute(query, (id_hewan, id_dokter, id_layanan, tgl_waktu_pemeriksaan, hasil_medis, catatan_tambahan))
+               
+                # Melakukan commit perubahan ke database
+                conn.commit()
+               
+                # Mengambil jumlah baris yang dimodifikasi oleh query
+                boolean = cur.rowcount
+               
+                # Menutup cursor
+                cur.close()
+               
+                print("Rekam medis baru telah ditambahkan!")
+                result = True
+
+            if result:
+                input('Tambah data berhasil')
+            else:
+                input('Tambah data gagal')
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_3 == '2':   # Lihat data rekam medis v
+            lihat_data_rekammedis()
+            input("\n\nTekan [enter] untuk kembali ke Menu rekam medis")
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_3 == '3':   # Edit data rekam medis v
+            os.system('cls')
+            # Meminta ID rekam medis yang ingin diubah
+            lihat_data_rekammedis()
+            id_rekamed = int(input("Masukkan ID rekam medis yang ingin diubah: "))
+           
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Mengecek apakah ID rekammedis ada dalam database
+                cur.execute("SELECT COUNT(*) FROM rekam_medis WHERE id_rekamed = %s", (id_rekamed,))
+                if cur.fetchone()[0] == 0:
+                    print("Maaf, ID pelanggan yang Anda cari tidak ada. Silakan cek kembali.")
+                    postgresql_cls(conn, cur)
+                    input("\n\nTekan [enter] untuk kembali ke Menu pelanggan")
+                    mode_admin(uname, nama_lengkap_logged)
+                    return
+               
+                # Meminta data baru dari user
+                id_hewan_baru               = input("1. Masukkan id hewan baru (kosongkan jika tidak ingin mengubah): ")
+                id_dokter_baru              = input("2. Masukkan id dokter baru (kosongkan jika tidak ingin mengubah): ")
+                id_layanan_baru             = input("3. Masukkan id hewan baru (kosongkan jika tidak ingin mengubah): ")
+                tgl_waktu_pemeriksaan_baru  = input("4. Masukkan tanngal waktu pemeriksaan baru (kosongkan jika tidak ingin mengubah): ")
+                hasil_medis_baru            = input("5. Masukkan hasil medis baru (kosongkan jika tidak ingin mengubah): ")
+                catatan_tambahan_baru       = input("6. Masukkan catatan tambahan baru (kosongkan jika tidak ingin mengubah): ")
+                # List untuk menyimpan bagian query yang akan diupdate
+                updates = []
+               
+                # List untuk menyimpan nilai yang akan diisi dalam query
+                values = []
+
+                # Mengecek apakah ada nilai baru untuk id_hewan baru dan menambahkannya ke query jika ada
+                if id_hewan_baru :
+                    updates.append("id_hewan = %s")
+                    values.append(id_hewan_baru )
+               
+                # Mengecek apakah ada nilai baru untuk id_dokter_baru dan menambahkannya ke query jika ada
+                if id_dokter_baru:
+                    updates.append("id_dokter = %s")
+                    values.append(id_dokter_baru)
+               
+                # Mengecek apakah ada nilai baru untuk id_layanan_baru dan menambahkannya ke query jika ada
+                if id_layanan_baru:
+                    updates.append("id_layanan = %s")
+                    values.append(id_layanan)
+               
+                # Mengecek apakah ada nilai baru untuk tgl_waktu_pemeriksaan_baru dan menambahkannya ke query jika ada
+                if tgl_waktu_pemeriksaan_baru:
+                    updates.append("tgl_waktu_pemeriksaan = %s")
+                    values.append(tgl_waktu_pemeriksaan_baru)
+
+                # Mengecek apakah ada nilai baru untuk hasil_medis_baru dan menambahkannya ke query jika ada
+                if hasil_medis_baru:
+                    updates.append("hasil_medis = %s")
+                    values.append(hasil_medis_baru)
+
+                # Mengecek apakah ada nilai baru untuk tgl_waktu_pemeriksaan_baru dan menambahkannya ke query jika ada
+                if catatan_tambahan_baru:
+                    updates.append("catatan_tambahan = %s")
+                    values.append(catatan_tambahan_baru)
+
+                # Menambahkan id_rekam medis ke values, ini diperlukan untuk klausa WHERE
+                values.append(id_rekamed)
+
+                # Jika ada data yang diupdate
+                if updates:
+                    # Membuat query update dengan bagian yang perlu diupdate
+                    query = f"UPDATE rekam_medis SET {', '.join(updates)} WHERE id_rekamed = %s"
+                    try:
+                        # Menjalankan query dengan nilai yang disediakan
+                        cur.execute(query, values)
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        print("Data rekam medis telah diubah!")
+                    except psycopg2.Error as e:
+                        # Menampilkan pesan kesalahan jika gagal melakukan update
+                        print("Gagal mengubah data rekam medis:", e)
+                       
+                        # Melakukan rollback jika terjadi kesalahan
+                        conn.rollback()
+                else:
+                    # Pesan jika tidak ada data yang diubah
+                    print("Tidak ada data yang diubah.")
+            except psycopg2.Error as e:
+                # Menangani kesalahan koneksi atau query
+                print(f"Terjadi kesalahan: {e}")
+                conn.rollback()
+            finally:
+                # Menutup kursor dan koneksi
+                cur.close()
+                conn.close()
+               
+            input("\n\nTekan [enter] untuk kembali ke Menu Rekam Medis")
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_3 == '4':   # Hapus data rekam medis v
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            lihat_data_rekammedis()
+
+            id_rekamed = int(input("Masukkan ID rekam medis yang ingin dihapus: "))
+            """Menghapus data rekam medis dari database."""
+
+            conn, cur = postgresql_connect()
+
+            try:
+                # First, check if the medical record exists
+                cur.execute("SELECT * FROM rekam_medis WHERE id_rekamed = %s", (id_rekamed,))
+                if cur.fetchone() is None:
+                    print("Rekam medis dengan ID tersebut tidak ditemukan.")
+                    result = False
+                else:
+                    # If it exists, proceed with deletion
+                    cur.execute("DELETE FROM rekam_medis WHERE id_rekamed = %s", (id_rekamed,))
+                    conn.commit()
+
+                    # Checking if the record was successfully deleted
+                    if cur.rowcount > 0:
+                        print("Data rekam medis telah dihapus!")
+                        result = True
+                    else:
+                        print("Gagal menghapus data rekam medis.")
+                        result = False
+
+            except Exception as e:
+                print(f"Terjadi kesalahan: {e}")
+                conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+                result = False
+            finally:
+                cur.close()  # Menutup kursor
+                conn.close()  # Menutup koneksi
+           
+            input("\n\nTekan [enter] untuk kembali ke Menu Rekam Medis")
+            mode_admin(uname, nama_lengkap_logged)
+
+            if result:
+                print('Data berhasil terhapus')
+            else:
+                print('Data gagal dihapus')
 
     # 4.4 DATA KUSTOMER
     elif admin_choice == '4':
         pass
 
-    # 4.5 DATA HEWAN PELIHARAAN
+    # 4.5 DATA HEWAN PELIHARAAN v
     elif admin_choice == '5':
-        pass
+        def lihat_data_hewan():
+            conn, cur = postgresql_connect()
+            """Menampilkan data hewan dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+           
+            # Query SQL untuk mengambil semua data dari tabel hewan
+            query = """
+            SELECT hew.id_hewan, hew.nama_hewan, hew.tanggal_lahir, pel.nama_pelanggan, jen.nama_jenis
+            FROM hewan hew
+            JOIN pelanggan pel on pel.id_pelanggan = hew.id_pelanggan
+            JOIN jenis_hewan jen on jen.id_jenishewan = hew.id_jenishewan
+            """
+           
+            # Menjalankan query
+            cur.execute(query)
+           
+            # Mengambil semua data hasil query
+            data_hewan = cur.fetchall()
+           
+            # Menutup cursor
+            postgresql_cls(conn, cur)
+           
+            # Headers untuk tabel yang akan ditampilkan
+            headers = [i[0] for i in cur.description]
+           
+            # Menampilkan data dalam format tabel
+            print(tabulate.tabulate(data_hewan, headers=headers, tablefmt=f"{format_table}"))
+       
+        def lihat_data_jenishewan():
+            conn, cur = postgresql_connect()
+            """Menampilkan data jenis hewan dari database."""
+            # Membuat cursor untuk berinteraksi dengan database
+           
+            # Query SQL untuk mengambil semua data dari tabel hewan
+            query = """
+            SELECT *
+            FROM jenis_hewan
+            """
+           
+            # Menjalankan query
+            cur.execute(query)
+           
+            # Mengambil semua data hasil query
+            data_jenishewan = cur.fetchall()
+           
+            # Menutup cursor
+            postgresql_cls(conn, cur)
+           
+            # Headers untuk tabel yang akan ditampilkan
+            headers = [i[0] for i in cur.description]
+           
+            # Menampilkan data dalam format tabel
+            print(tabulate.tabulate(data_jenishewan, headers=headers, tablefmt=f"{format_table}"))
+
+        choice_5 = input("[1] Tambah Data Hewan Peliharaan\n[2] Tambah Data Jenis Hewan\n[3] Lihat Data Hewan Peliharaan\n[4] Lihat Jenis Hewan\n[5] Edit Data Hewan Peliharaan\n[6] Edit Data Jenis hewan\n[7] Hapus Data Hewan Peliharaan\n[8] Hapus Data Jenis hewan\nPilih menu : ")
+        if choice_5 == '1': #FITUR TAMBAH DATA HEWAN PELIHARAAN
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            # Meminta data hewan baru dari user
+            conn, cur = postgresql_connect()
+            nama_hewan     = input("Masukkan nama_hewan: ")
+            tanggal_lahir  = input("Masukkan tanggal lahir: ")
+            id_pelanggan   = input("Masukkan id pelanggan: ")
+            id_jenishewan  = input("Masukkan id jenis hewan: ")
+
+            # Menambah hewan baru ke database
+            # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
+            result = False
+            if not nama_hewan or not tanggal_lahir or not id_pelanggan or not id_jenishewan:
+                return False
+            else:
+                """Menambahkan data hewan baru ke database."""
+                # Membuat cursor untuk berinteraksi dengan database
+                cur = conn.cursor()
+               
+                # Query SQL untuk menambahkan data hewan baru
+                query = """
+                INSERT INTO hewan (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan)
+                VALUES (%s, %s, %s, %s)
+                """
+               
+                # Menjalankan query dengan data yang diberikan
+                cur.execute(query, (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan))
+               
+                # Melakukan commit perubahan ke database
+                conn.commit()
+               
+                # Mengambil jumlah baris yang dimodifikasi oleh query
+                boolean = cur.rowcount
+               
+                # Menutup cursor
+                cur.close()
+               
+                print("hewan baru telah ditambahkan!")
+                result = True
+
+
+            if result:
+                input('Tambah data berhasil')
+            else:
+                input('Tambah data gagal')
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_5 == '2':  # FITUR TAMBAH DATA JENIS HEWAN
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            # Meminta data hewan baru dari user
+            conn, cur = postgresql_connect()
+            nama_jenis = input("Masukkan nama_jenis: ")
+
+
+            # Menambah hewan baru ke database
+            # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
+            if not nama_jenis:
+                print("Nama jenis hewan tidak boleh kosong.")
+                input("\n\nTekan [enter] untuk kembali ke Menu jenis hewan")
+                mode_admin(uname, nama_lengkap_logged)
+            else:
+                try:
+                    """Menambahkan data hewan baru ke database."""
+                    # Query SQL untuk menambahkan data hewan baru
+                    query = """
+                    INSERT INTO jenis_hewan (nama_jenis)
+                    VALUES (%s)
+                    """
+
+
+                    # Menjalankan query dengan data yang diberikan
+                    cur.execute(query, (nama_jenis,))
+                   
+                    # Melakukan commit perubahan ke database
+                    conn.commit()
+
+
+                    # Mengambil jumlah baris yang dimodifikasi oleh query
+                    if cur.rowcount > 0:
+                        print("Jenis hewan baru telah ditambahkan!")
+                        result = True
+                    else:
+                        print("Tambah data gagal.")
+                        result = False
+                except Exception as e:
+                    print(f"Terjadi kesalahan: {e}")
+                    result = False
+                    conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+                finally:
+                    cur.close()  # Menutup kursor
+                    conn.close()  # Menutup koneksi
+
+                if result:
+                    input('Tambah data berhasil\n\nTekan [enter] untuk kembali ke Menu jenis hewan')
+                else:
+                    input('Tambah data gagal\n\nTekan [enter] untuk kembali ke Menu jenis hewan')
+                mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_5 == '3': #FITUR LIHAT DATA HEWAN
+            lihat_data_hewan()
+            input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_5 == '4': #FITUR LIHAT DATA JENIS HEWAN
+            lihat_data_jenishewan()
+            input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_5 == '5': #FITUR EDIT DATA HEWAN
+            os.system('cls')
+            # Meminta ID hewan yang ingin diubah
+            lihat_data_hewan()
+            id_hewan = int(input("Masukkan ID hewan yang ingin diubah: "))
+           
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Mengecek apakah ID hewan ada dalam database
+                cur.execute("SELECT COUNT(*) FROM hewan WHERE id_hewan = %s", (id_hewan,))
+                if cur.fetchone()[0] == 0:
+                    print("Maaf, ID hewan yang Anda cari tidak ada. Silakan cek kembali.")
+                    postgresql_cls(conn, cur)
+                    input("\n\nTekan [enter] untuk kembali ke menu hewan peliharaan")
+                    mode_admin(uname, nama_lengkap_logged)
+                    return
+               
+                # Meminta data baru dari user
+                nama_hewan_baru = input("Masukkan nama baru hewan (kosongkan jika tidak ingin mengubah): ")
+                tanggal_lahir_baru = input("Masukkan tanggal lahir baru hewan (kosongkan jika tidak ingin mengubah): ")
+                id_pelanggan_baru = input("Masukkan id pelanggan baru (kosongkan jika tidak ingin mengubah): ")
+                id_jenishewan_baru = input("Masukkan id jenis hewan baru  (kosongkan jika tidak ingin mengubah): ")
+
+                # List untuk menyimpan bagian query yang akan diupdate
+                updates = []
+               
+                # List untuk menyimpan nilai yang akan diisi dalam query
+                values = []
+
+                # Mengecek apakah ada nilai baru untuk nama_hewan dan menambahkannya ke query jika ada
+                if nama_hewan_baru:
+                    updates.append("nama_hewan = %s")
+                    values.append(nama_hewan_baru)
+               
+                # Mengecek apakah ada nilai baru untuk tanggal_lahir dan menambahkannya ke query jika ada
+                if tanggal_lahir_baru:
+                    updates.append("tanggal_lahir = %s")
+                    values.append(tanggal_lahir_baru)
+               
+                # Mengecek apakah ada nilai baru untuk id_pelanggan dan menambahkannya ke query jika ada
+                if id_pelanggan_baru:
+                    updates.append("id_pelanggan = %s")
+                    values.append(id_pelanggan_baru)
+               
+                # Mengecek apakah ada nilai baru untuk id_jenishewan gan dan menambahkannya ke query jika ada
+                if id_jenishewan_baru:
+                    updates.append("id_jenishewan = %s")
+                    values.append(id_jenishewan_baru)
+
+                # Menambahkan id_hewan ke values, ini diperlukan untuk klausa WHERE
+                values.append(id_hewan)
+
+                # Jika ada data yang diupdate
+                if updates:
+                    # Membuat query update dengan bagian yang perlu diupdate
+                    query = f"UPDATE hewan SET {', '.join(updates)} WHERE id_hewan = %s"
+                    try:
+                        # Menjalankan query dengan nilai yang disediakan
+                        cur.execute(query, values)
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        print("Data hewan telah diubah!")
+                    except psycopg2.Error as e:
+                        # Menampilkan pesan kesalahan jika gagal melakukan update
+                        print("Gagal mengubah data hewan:", e)
+                       
+                        # Melakukan rollback jika terjadi kesalahan
+                        conn.rollback()
+                else:
+                    # Pesan jika tidak ada data yang diubah
+                    print("Tidak ada data yang diubah.")
+            except psycopg2.Error as e:
+                # Menangani kesalahan koneksi atau query
+                print(f"Terjadi kesalahan: {e}")
+                conn.rollback()
+            finally:
+                # Menutup kursor dan koneksi
+                cur.close()
+                conn.close()
+               
+            input("\n\nTekan [enter] untuk kembali ke Menu pelanggan")
+            mode_admin(uname, nama_lengkap_logged)
+
+        elif choice_5 == '6': #FITUR EDIT DATA JENIS HEWAN
+            os.system('cls')
+            # Meminta ID jenis hewan yang ingin diubah
+            lihat_data_jenishewan()
+            id_jenishewan = int(input("Masukkan ID jenis hewan yang ingin diubah: "))
+           
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Mengecek apakah ID jenis hewan ada dalam database
+                cur.execute("SELECT COUNT(*) FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                if cur.fetchone()[0] == 0:
+                    print("Maaf, ID jenis hewan yang Anda cari tidak ada. Silakan cek kembali.")
+                    postgresql_cls(conn, cur)
+                    input("\n\nTekan [enter] untuk kembali ke menu hewan peliharaan")
+                    mode_admin(uname, nama_lengkap_logged)
+                    return
+               
+                # Meminta data baru dari user
+                nama_jenis_baru = input("Masukkan nama baru jenis hewan (kosongkan jika tidak ingin mengubah): ")
+
+                # List untuk menyimpan bagian query yang akan diupdate
+                updates = []
+               
+                # List untuk menyimpan nilai yang akan diisi dalam query
+                values = []
+
+                # Mengecek apakah ada nilai baru untuk nama_jenis dan menambahkannya ke query jika ada
+                if nama_jenis_baru:
+                    updates.append("nama_jenis = %s")
+                    values.append(nama_jenis_baru)
+
+                # Menambahkan id_jenishewan ke values, ini diperlukan untuk klausa WHERE
+                values.append(id_jenishewan)
+
+                # Jika ada data yang diupdate
+                if updates:
+                    # Membuat query update dengan bagian yang perlu diupdate
+                    query = f"UPDATE jenis_hewan SET {', '.join(updates)} WHERE id_jenishewan = %s"
+                    try:
+                        # Menjalankan query dengan nilai yang disediakan
+                        cur.execute(query, values)
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        print("Data jenis hewan telah diubah!")
+                    except psycopg2.Error as e:
+                        # Menampilkan pesan kesalahan jika gagal melakukan update
+                        print("Gagal mengubah data jenis hewan:", e)
+                       
+                        # Melakukan rollback jika terjadi kesalahan
+                        conn.rollback()
+                else:
+                    # Pesan jika tidak ada data yang diubah
+                    print("Tidak ada data yang diubah.")
+            except psycopg2.Error as e:
+                # Menangani kesalahan koneksi atau query
+                print(f"Terjadi kesalahan: {e}")
+                conn.rollback()
+            finally:
+                # Menutup kursor dan koneksi
+                cur.close()
+                conn.close()
+               
+            input("\n\nTekan [enter] untuk kembali ke Menu hewan")
+            mode_admin(uname, nama_lengkap_logged)
+        
+        elif choice_5 == '7': #FITUR HAPUS DATA HEWAN
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            lihat_data_hewan()
+
+            id_hewan = int(input("Masukkan ID hewan yang ingin dihapus: "))
+            """Menghapus data hewan dari database."""
+
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Memeriksa apakah hewan tersebut ada
+                cur.execute("SELECT COUNT(*) FROM hewan WHERE id_hewan = %s", (id_hewan,))
+                count_hewan = cur.fetchone()[0]
+
+
+                if count_hewan > 0:
+                    # Memeriksa apakah hewan tersebut ada di rekam_medis
+                    cur.execute("SELECT COUNT(*) FROM rekam_medis WHERE id_hewan = %s", (id_hewan,))
+                    count_rekam_medis = cur.fetchone()[0]
+                   
+                    # Memeriksa apakah hewan tersebut ada di reservasi
+                    cur.execute("SELECT COUNT(*) FROM reservasi WHERE id_hewan = %s", (id_hewan,))
+                    count_reservasi = cur.fetchone()[0]
+                   
+                    if count_rekam_medis == 0 and count_reservasi == 0:
+                        # Menghapus data hewan dari tabel hewan
+                        cur.execute("DELETE FROM hewan WHERE id_hewan = %s", (id_hewan,))
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        if cur.rowcount > 0:
+                            print("Data hewan telah dihapus!")
+                            result = True
+                        else:
+                            print("Hewan dengan ID tersebut tidak ditemukan.")
+                            result = False
+                    else:
+                        print("Hewan ini masih terkait dengan rekam medis atau reservasi. Tidak bisa dihapus.")
+                        result = False
+                else:
+                    print("Hewan dengan ID tersebut tidak ditemukan.")
+                    result = False
+            except Exception as e:
+                print(f"Terjadi kesalahan: {e}")
+                result = False
+                conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+            finally:
+                cur.close()  # Menutup kursor
+                conn.close()  # Menutup koneksi
+           
+            input("\n\nTekan [enter] untuk kembali ke Menu hewan")
+            mode_admin(uname, nama_lengkap_logged)
+           
+            if result:
+                print('Data berhasil terhapus')
+            else:
+                print('Data gagal dihapus')
+
+        elif choice_5 == '8': #FITUR HAPUS DATA JENIS HEWAN
+            os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
+            lihat_data_jenishewan()
+
+            id_jenishewan = int(input("Masukkan ID jenis hewan yang ingin dihapus: "))
+            """Menghapus data jenis hewan dari database."""
+
+            conn, cur = postgresql_connect()
+           
+            try:
+                # Memeriksa apakah jenis hewan tersebut ada
+                cur.execute("SELECT COUNT(*) FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                count_jenishewan = cur.fetchone()[0]
+
+                if count_jenishewan > 0:
+                    # Memeriksa apakah jenis hewan tersebut ada di tabel hewan
+                    cur.execute("SELECT COUNT(*) FROM hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                    count_hewan = cur.fetchone()[0]
+                   
+                    if count_hewan == 0:
+                        # Menghapus data jenis hewan dari tabel jenis_hewan
+                        cur.execute("DELETE FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                       
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                       
+                        if cur.rowcount > 0:
+                            print("Data jenis hewan telah dihapus!")
+                            result = True
+                        else:
+                            print("Jenis hewan dengan ID tersebut tidak ditemukan.")
+                            result = False
+                    else:
+                        print("Jenis hewan ini masih terkait dengan hewan. Tidak bisa dihapus.")
+                        result = False
+                else:
+                    print("Jenis hewan dengan ID tersebut tidak ditemukan.")
+                    result = False
+            except Exception as e:
+                print(f"Terjadi kesalahan: {e}")
+                result = False
+                conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+            finally:
+                cur.close()  # Menutup kursor
+                conn.close()  # Menutup koneksi
+           
+            input("\n\nTekan [enter] untuk kembali ke Menu jenis hewan")
+            mode_admin(uname, nama_lengkap_logged)
+           
+            if result:
+                print('Data berhasil terhapus')
+            else:
+                print('Data gagal dihapus')
 
     # 4.6 DATA DOKTER v
     elif admin_choice == '6':
@@ -438,7 +1495,7 @@ def mode_admin(uname, nama_lengkap_logged):
             headers = ["ID", 'Nama Dokter', 'Telepon', 'No. STR', 'Username', 'Password']
             
             # Menampilkan data dalam format tabel
-            print(tabulate.tabulate(data_dokter, headers=headers, tablefmt="grid"))  
+            print(tabulate.tabulate(data_dokter, headers=headers, tablefmt=f"{format_table}"))  
 
         choice_4 = input("[1] Tambah [2] Lihat [3] Edit [4] Hapus Pilih menu : ")
         if choice_4 == '1':     # Tambah data dokter v
@@ -641,7 +1698,7 @@ def mode_admin(uname, nama_lengkap_logged):
             
             headers = ['ID', 'Nama Layanan', 'Harga Layanan']
             # Menampilkan data layanan dalam bentuk tabel
-            print(tabulate.tabulate(data_layanan, headers=headers, tablefmt="grid"))
+            print(tabulate.tabulate(data_layanan, headers=headers, tablefmt=f"{format_table}"))
 
         def ubah_data_layanan(conn, cur, layanan_baru, harga_baru, id_layanan):  # v
             """Mengubah data layanan yang ada di database."""
@@ -755,7 +1812,7 @@ def mode_admin(uname, nama_lengkap_logged):
             headers = ["ID", 'Nama Staf', 'Telepon', 'Username', 'Password']
            
             # Menampilkan data dalam format tabel
-            print(tabulate.tabulate(data_staf, headers=headers, tablefmt="grid"))  
+            print(tabulate.tabulate(data_staf, headers=headers, tablefmt=f"{format_table}"))  
 
 
         choice_8 = input("\n[1] Tambah Data Staf\n[2] Lihat Data Staf\n[3] Edit Data Staf\n[4] Hapus Data Staf\nPilih menu : ")
@@ -1072,7 +2129,7 @@ mini_header = minihead_a+'\n'+minihead_b+'\n'+minihead_c+'\n'+minigead_d+'\n'
 # VARIABEL-VARIABEL PENTNG ------------------------------------------------------------------------
 delay_welcome = 1 # ANIMASI PADA WELCOMING PAGE
 
-
+format_table = 'fancy_grid'
 
 
 
