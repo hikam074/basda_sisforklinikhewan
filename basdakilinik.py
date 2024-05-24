@@ -4,6 +4,7 @@ import sys
 import time
 import tabulate
 import pandas as pd
+import datetime
 
 # SESUAIKAN DENGAN POSTGRE KALIAN -----------------------------------------------------------------
 def postgresql_connect():                   # menghubungkan postgresql dan python
@@ -210,98 +211,156 @@ def mode_dokter(uname, nama_lengkap_logged):
         # Menampilkan data layanan dalam bentuk tabel
         print(tabulate.tabulate(data_layanan, headers=headers, tablefmt=f"{format_table}"))
 
-    def rekam_medis_buat(conn, cur, uname): # fatal eror
-        nm_hwn=input('Nama hewan: ')
-        nm_plnggn=input('Nama pelanggan: ')
-        lihat_data_layanan(conn, cur)
-        id_layanan_hewan = input('masukkan id layanan')
-
-        hewannya= f"select id_hewan from hewan join where nama_hewan = '{nm_hwn}' and nama_pelanggan = '{nm_plnggn}'"
-        no_id_hewan=cur.execute(hewannya)
-
-        dokternya = f'select id_dokter from dokter where uname={uname}'
-        id_dokter=cur.execute(dokternya)
-
-        layanannya=f'select id_layananan from layanan where id_layanan={id_layanan_hewan}'
-        id_layanan=cur.execute(layanannya)
-
-        keterangan=input('Hasil Medis: ')
-        nilai=[no_id_hewan,id_dokter,id_layanan,keterangan]
-        sintaksi=f'insert into rekam_medis (id_hewan,id_dokter,id_layanan,hasil_medis) values({nilai})'
-        cur.execute(sintaksi)
-
-        postgresql_commit_nclose(conn, cur)
-
-    def rekam_medis_edit(conn, cur, uname): # fatal eror
-        print('[1] Nama Hewan\n[2] Nama Dokter\n[3] Layanan\n[4] Hasil Medis\n[5] Semua\n[Enter] Exit ')
-        pilih_lagi=input('Pilih: ')
-        hal_yang_dirubah=["hewan","dokter","layanan","rekam_medis"]
-        siapa_yang_dirubah=input("No id rekam medis yang akan dirubah:")
-        pilih=hal_yang_dirubah[int(pilih_lagi)-1]
-        if '0'<=pilih_lagi<='2':
-            ketik=input(f"Nama {pilih} yang benar: ")
-            pilihan=f'id_{pilih}'
-            sintaksi =f' select {pilihan} from {pilih} where nama_{pilih}={ketik}'
-            sintaksi_baru=f'update rekam_medis set id_{pilih}={sintaksis} where id_rekamed={siapa_yang_dirubah}'
-            cur.execute(sintaksi_baru)
-            conn.commit()
-            conn.close()
-            cur.close()
-        elif pilih_lagi=='3': 
-            baru=input("Hasil medis yang benar: ")
-            sintaksi_baru=f'update rekam_medis set hasil_medis={baru} where id_rekamed={siapa_yang_dirubah}'
-            cur.execute(sintaksi_baru)
-            conn.commit()
-            conn.close()
-            cur.close()
-        elif pilih_lagi=='4':
-            sintaksis1=[]
-            for i in range(len(hal_yang_dirubah)-1):
-                pilih=hal_yang_dirubah[i]
-                ketik=input(f"Nama {pilih} yang benar: ")
-                pilihan=f'id_{pilih}'
-                id +=f' select {pilihan} from {pilih} where nama_{pilih}={ketik}'
-            ketik=input("Hasil medis yang benar: ")
-            sintaksis= f"""update rekam_medis set id_hewan={id[0]},id_dokter={id[1]},id_layanan={id[2]},hasil_medis={ketik} where id_rekamed={siapa_yang_dirubah}"""
-            cur.execute(sintaksis)
-            conn.commit()
-            conn.close()
-            cur.close()
-        else:
-            print("Kembali ke halaman sebelumnya") 
+    def rekam_medis(pilihan, uname, conn, cur):
+        match pilihan:
+            case '1': # 
+                nama_hewan=input('Nama hewan: ') # inputan nama hewan untuk mengecek hewan yang mana yg benar 
+                nama_pelanggan=input('Nama pelanggan: ')
+                cur.execute(f"select id_hewan from hewan where nama_hewan ilike '{nama_hewan}' and id_pelanggan = (select id_pelanggan from pelanggan where nama_pelanggan ilike '{nama_pelanggan}')")
+                no_id_hewan=cur.fetchall() # menghasilkan id nama hewan yang dicari
+                cur.execute(f"select id_dokter from dokter where uname_dokter= '{uname}'")
+                id_dokter=cur.fetchall() # menggunakan username untuk pencarian id dokter
+                cur.execute("select * from layanan")
+                data_layanan=cur.fetchall()
+                nilai1=pd.DataFrame(data_layanan,columns=['Id Layanan','Nama Layanan','Harga Layanan'])
+                print (nilai1)
+                id_layanan_hewan=input('Pilih jenis layanan [Ketik Idnya]: ') #pilih layanan
+                cur.execute(f'select id_layanan from layanan where id_layanan={id_layanan_hewan}')
+                id_layanan=cur.fetchall()
+                hasil_medis=input('Hasil Medis: ') # hasil medis
+                catatan=input('Catatan:') # hasil catatan
+                tgl_waktu_pemeriksaan=datetime.datetime.now()
+                cur.execute(f"INSERT INTO rekam_medis (id_hewan,id_dokter,id_layanan,tgl_waktu_pemeriksaan,hasil_medis,catatan_tambahan)  VALUES ({no_id_hewan[0][0]},{id_dokter[0][0]},{id_layanan[0][0]},'{tgl_waktu_pemeriksaan}','{hasil_medis}','{catatan}')")
+                conn.commit()
+            case'2': # fitur ubah data di rekam medis
+                cur.execute("""select h.nama_hewan,d.nama_dokter,l.nama_layanan,
+                            r.tgl_waktu_pemeriksaan,r.hasil_medis,r.catatan_tambahan from rekam_medis r join 
+                            hewan h on (r.id_hewan=h.id_hewan) 
+                            join dokter d on (d.id_dokter=r.id_dokter) join layanan l on (r.id_layanan=l.id_layanan) """)
+                df=cur.fetchall()
+                df1=pd.DataFrame(df)
+                columns=['Id Rekam Medis','Nama Hewan','Nama Dokter','Nama Layanan','Tanggal Pemeiksaan','Hasil Medis','Catatan Tambahan']
+                tabel = tabulate.tabulate(df1,#type: ignore
+                                columns,tablefmt='fancy_grid')
+                print('[1] Nama Hewan\n[2] Nama Dokter\n[3] Layanan\n[4] Hasil Medis\n[5] Caatatan\n[6] Semua\n[Enter] Exit ')
+                lagi=int(input('Pilih: '))
+                pilih_lagi=int(lagi-1)
+                print(tabel)
+                siapa_yang_dirubah=input("No id rekam medis yang akan dirubah:")
+                if pilih_lagi ==0: #ubah nama hewan yg benar
+                    hewan=input(f"Nama hewan yang benar: ")
+                    cur.execute(f" select id_hewan from hewan where nama_hewan='{hewan}'")
+                    sintaksi=cur.fetchall()
+                    sintaksi_baru=f"update rekam_medis set id_hewan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                elif pilih_lagi==1:  #uabh dokter yang benar
+                    dokter=input(f"Nama dokter yang benar: ")
+                    cur.execute(f" select id_dokter from dokter where nama_dokter='{dokter}'")
+                    sintaksi=cur.fetchall()
+                    sintaksi_baru=f"update rekam_medis set id_dokter = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                elif pilih_lagi==2: # ubah layanan yg benar
+                    ketik=input(f"Nama layanan yang benar: ") 
+                    cur.execute(f" select id_layanan from layanan where nama_layanan='{ketik}'")
+                    sintaksi=cur.fetchall()
+                    sintaksi_baru=f"update rekam_medis set id_layanan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                elif pilih_lagi ==3: # ubah hasil medis yang benar
+                    ketik=input(f"Nama hasil medis yang benar: ")
+                    sintaksi_baru=f"update rekam_medis set hasil_medis= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                elif pilih_lagi==4: # ubah catatan di rekam medis
+                    ketik=input(f"Nama catatan tambahan yang benar: ")
+                    sintaksi_baru=f"update rekam_medis set catatan_tambahan= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                # Ubah keseluruhan data
+                elif pilih_lagi==5:
+                    ketik=input(f"Nama hewan yang benar: ") # Input nama hewan yg benar 
+                    cur.execute(f" select id_hewan from hewan where nama_hewan='{ketik}'")
+                    sintaksi=cur.fetchall() # menampilkan hasil pencarian id hewannya yg benar
+                    sintaksi_baru=f"update rekam_medis set id_hewan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    ketik=input(f"Nama dokter yang benar: ") # input nama dokter yang benar
+                    cur.execute(f" select id_dokter from dokter where nama_dokter='{ketik}'")
+                    sintaksi=cur.fetchall()
+                    sintaksi_baru=f"update rekam_medis set id_dokter = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    ketik=input(f"Nama layanan yang benar: ") # input nama layanan yang benar
+                    cur.execute(f" select id_layanan from layanan where nama_layanan='{ketik}'")
+                    sintaksi=cur.fetchall()
+                    sintaksi_baru=f"update rekam_medis set id_layanan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    ketik=input(f"Nama hasil medis yang benar: ") # input hasil medis yang benar
+                    sintaksi_baru=f"update rekam_medis set hasil_medis= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    ketik=input(f"Nama catatan tambahan yang benar: ") # input catatan medis yang benar
+                    sintaksi_baru=f"update rekam_medis set catatan_tambahan= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
+                    cur.execute(sintaksi_baru)
+                    conn.commit()
+                    return "Berhasil"
+                
+                else: # jika salah ketik terdapat pesan peringatan
+                    print('Maaf Anda salah ketik')
+            case '3': # Lihat rekam medis
+                sintaksis ="""select r.id_rekamed, h.nama_hewan,d.nama_dokter,l.nama_layanan, r.hasil_medis 
+                from rekam_medis r join hewan h on (h.id_hewan=r.id_hewan)
+                join dokter d on (d.id_dokter=r.id_dokter)
+                join layanan l on (l.id_layanan=r.id_layanan)"""
+                cur.execute(sintaksis)
+                nilai=cur.fetchall()
+                df=pd.DataFrame(nilai)
+                nilai1=df.reset_index(drop=True)
+                header = ["No","Id Rekam Medis", "Nama Hewan", "Nama Dokter", "Nama Layanan","Hasil Medis"]
+                tabel = tabulate.tabulate(nilai1,#type: ignore
+                                headers=header, tablefmt="fancy_grid")
+                print(tabel)
+            case '4': # penghapusan rekam medis oleh dokter
+                id=input('Id rekam medis yang akan di hapus')
+                sintaksis_hapus= f"DELETE FROM rekam_medis WHERE id_rekamed = '{id}' " 
+                cur.execute(sintaksis_hapus)
+                conn.commit()
+            case _:
+                print('Kembali lagi dihalaman utama')
 
     conn, cur = postgresql_connect()
-
     print(f"selamat datang, {nama_lengkap_logged} !")
     print(" [1] Rekam Medis \n [2] Profil Anda \n [3] Log-out ")
     dokter_choice = input("Silahkan pilih menu anda : ")
 
     # 2.1 REKAM MEDIS fatal eror
     if dokter_choice == '1':
-        print('[1] Buat\n[2] Edit\n[3] Lihat')
+        print('[1] Buat\n[2] Edit\n[3] Lihat\n[4] Hapus\n[5] Exit')
         pilihan=input('Pilih: ')
-        if pilihan=='1' or pilihan.lower() =='buat':
-            rekam_medis_buat(conn, cur, uname)
+        if pilihan=='1':
+            rekam_medis(pilihan, uname, conn, cur)
 
-        elif pilihan  == '2' or  pilihan.lower()=='edit':
-            rekam_medis_edit(conn, cur, uname)
+        elif pilihan  == '2':
+            rekam_medis(pilihan, uname, conn, cur)
 
-        elif pilihan=='3' or pilihan.lower()=='lihat':
-            sintaksis ="""select r.id_rekamed, h.nama_hewan,d.nama_dokter,l.nama_layanan, r.hasil_medis 
-            from rekam_medis r join hewan h on (h.id_hewan=r.id_hewan)
-            join dokter d on (d.id_dokter=r.id_dokter)
-            join layanan l on (l.id_layanan=r.id_layanan)"""
-            nilai=cur.execute(sintaksis)
-            header = ["Id Rekam Medis", "Nama Hewan", "Nama Dokter", "Nama Layanan","Hasil Medis"]
-            print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
-
-            postgresql_commit_nclose(conn, cur)
+        elif pilihan=='3':
+            rekam_medis(pilihan, uname, conn, cur)
 
         elif pilihan=='4':
             id=input('Id rekam medis yang akan di hapus')
             sintaksis_hapus= f"DELETE FROM rekam_medis WHERE id_rekamed = '{id}' " 
             cur.execute(sintaksis_hapus)
             postgresql_commit_nclose(conn, cur)
+        elif pilihan == '5':
+            mode_dokter(uname, nama_lengkap_logged)
 
         mode_dokter(uname, nama_lengkap_logged)
 
@@ -2594,9 +2653,6 @@ mini_header = minihead_a+'\n'+minihead_b+'\n'+minihead_c+'\n'+minigead_d+'\n'
 delay_welcome = 1 # ANIMASI PADA WELCOMING PAGE
 
 format_table = 'fancy_grid'
-
-
-
 
 # EKSEKUSI PROGRAM --------------------------------------------------------------------------------
 
