@@ -5,6 +5,7 @@ import time
 import tabulate
 import pandas as pd
 import datetime
+import textwrap
 
 # SESUAIKAN DENGAN POSTGRE KALIAN -----------------------------------------------------------------
 def postgresql_connect():                   # menghubungkan postgresql dan python
@@ -1323,8 +1324,11 @@ def mode_admin(uname, nama_lengkap_logged):
 
         menu_transaksi(nama_lengkap_logged)
 
-    # 4.3 DATA REKAM MEDIS v UI
+    # 4.3 DATA REKAM MEDIS v UI FIXED
     elif admin_choice == '3': 
+        def wrap_text(text, width):
+            return "\n".join(textwrap.wrap(text, width))
+        
         def menu_rekammedis(nama_lengkap_logged):
             os.system('cls')
             print("ADMIN>DASHBOARD>REKAM MEDIS")
@@ -1351,8 +1355,17 @@ def mode_admin(uname, nama_lengkap_logged):
 
                 cur.execute(f"select r.id_rekamed, r.tgl_waktu_pemeriksaan, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) where TO_CHAR(tgl_waktu_pemeriksaan :: DATE, 'yyyy-mm-dd') = TO_CHAR(tgl_waktu_pemeriksaan :: DATE, '{tanggal}')")
                 datarekammedis = cur.fetchall()
+                
                 headers = [i[0] for i in cur.description]
-                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                wrapped_datarekammedis = []
+                for row in datarekammedis:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_datarekammedis.append(wrapped_row)
+
+                print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
                 postgresql_cls(conn, cur)
 
                 input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")  
@@ -1381,7 +1394,15 @@ def mode_admin(uname, nama_lengkap_logged):
                 cur.execute(f"select r.id_rekamed, jh.nama_jenis, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where jh.id_jenishewan = {jenishewan}")
                 datarekammedis = cur.fetchall()
                 headers = [i[0] for i in cur.description]
-                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                wrapped_datarekammedis = []
+                for row in datarekammedis:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_datarekammedis.append(wrapped_row)
+                print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+        
                 postgresql_cls(conn, cur)
 
                 input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")
@@ -1412,7 +1433,15 @@ def mode_admin(uname, nama_lengkap_logged):
                 cur.execute(f'select r.id_rekamed,h.id_hewan, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_hewan = {idhewan}')
                 datarekammedis = cur.fetchall()
                 headers = [i[0] for i in cur.description]
-                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                wrapped_datarekammedis = []
+                for row in datarekammedis:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_datarekammedis.append(wrapped_row)
+                print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+        
                 postgresql_cls(conn, cur)
                 input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")
                 menu_rekammedis(nama_lengkap_logged)
@@ -1438,11 +1467,18 @@ def mode_admin(uname, nama_lengkap_logged):
                 print(f"ADMIN>DASHBOARD>REKAM MEDIS>CARI BERDASARKAN ID DOKTER>ID:{iddokter}")
                 print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
            
-                cur.execute(f'select r.id_rekamed, d.id_dokter, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where d.id_dokter = {iddokter}')
+                cur.execute(f'select r.id_rekamed, d.id_dokter, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where d.id_dokter = {iddokter}')
                 datarekammedis = cur.fetchall()
                 headers = [i[0] for i in cur.description]
-                os.system('cls')
-                print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                wrapped_datarekammedis = []
+                for row in datarekammedis:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_datarekammedis.append(wrapped_row)
+                print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+        
                 postgresql_cls(conn, cur)
 
                 input("Tekan [Enter] untuk kembali ke menu REKAM MEDIS : ")
@@ -1455,7 +1491,7 @@ def mode_admin(uname, nama_lengkap_logged):
 
         menu_rekammedis(nama_lengkap_logged)
 
-    # 4.4 DATA KUSTOMER v UI
+    # 4.4 DATA KUSTOMER v UI FIXED
     elif admin_choice == '4':
         def lihat_data_pelanggan():
             conn, cur = postgresql_connect()
@@ -1463,7 +1499,7 @@ def mode_admin(uname, nama_lengkap_logged):
             # Membuat cursor untuk berinteraksi dengan database
            
             query = """
-            SELECT * FROM pelanggan
+            SELECT * FROM pelanggan order by id_pelanggan asc
             """
            
             cur.execute(query)
@@ -1474,7 +1510,7 @@ def mode_admin(uname, nama_lengkap_logged):
             postgresql_cls(conn, cur)
            
             # Headers untuk tabel yang akan ditampilkan
-            headers = ["ID", 'Nama pelanggan', 'Telepon', 'Username', 'Password']
+            headers = [i[0] for i in cur.description]
            
             # Menampilkan data dalam format tabel
             print(tabulate.tabulate(data_pelanggan, headers=headers, tablefmt=f"{format_table}"))  
@@ -1499,36 +1535,35 @@ def mode_admin(uname, nama_lengkap_logged):
                 # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
                 result = False
                 if not nama_pelanggan or not tlp_pelanggan or not uname_pelanggan or not pw_pelanggan:
-                    print("Semua field harus diisi!")
-                    return False
+                    print("\nPERHATIAN : Semua field harus diisi! silahkan coba lagi")
+                     
                 else:
-                    """Menambahkan data pelanggan baru ke database."""
-                    cur = conn.cursor()
-                
-                    query = """
-                    INSERT INTO pelanggan (nama_pelanggan, tlp_pelanggan, uname_pelanggan, pw_pelanggan)
-                    VALUES (%s, %s, %s, %s)
-                    """
-                
-                    # Menjalankan query dengan data yang diberikan
-                    cur.execute(query, (nama_pelanggan, tlp_pelanggan, uname_pelanggan, pw_pelanggan))
-                
-                    # Melakukan commit perubahan ke database
-                    conn.commit()
-                
-                    # Mengambil jumlah baris yang dimodifikasi oleh query
-                    boolean = cur.rowcount
-                
-                    # Menutup cursor
-                    cur.close()
-                
-                    print("Pelanggan baru telah ditambahkan!")
-                    result = True
-
-                if result:
-                    input('Tambah data berhasil')
-                else:
-                    input('Tambah data gagal')
+                    try:
+                        """Menambahkan data pelanggan baru ke database."""
+                        cur = conn.cursor()
+                    
+                        query = """
+                        INSERT INTO pelanggan (nama_pelanggan, tlp_pelanggan, uname_pelanggan, pw_pelanggan)
+                        VALUES (%s, %s, %s, %s)
+                        """
+                    
+                        # Menjalankan query dengan data yang diberikan
+                        cur.execute(query, (nama_pelanggan, tlp_pelanggan, uname_pelanggan, pw_pelanggan))
+                    
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                    
+                        # Mengambil jumlah baris yang dimodifikasi oleh query
+                        boolean = cur.rowcount
+                    
+                        # Menutup cursor
+                        cur.close()
+                    
+                        print("\nPelanggan baru telah ditambahkan! Tambah data berhasil")
+                    except:
+                        input('\nPERHATIAN : Terdapat kesalahan! Tambah data gagal')
+                    
+                input("\nTekan [Enter] untuk kembali ke Menu Pelanggan : ")
                 data_customer(nama_lengkap_logged)
 
             elif choice_4 == '2':   # Lihat data pelanggan 
@@ -1536,7 +1571,7 @@ def mode_admin(uname, nama_lengkap_logged):
                 print("ADMIN>DASHBOARD>DATA PELANGGAN>LIHAT DATA")
                 print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                 lihat_data_pelanggan()
-                input("\n\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
+                input("\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
                 data_customer(nama_lengkap_logged)
 
             elif choice_4 == '3':   # Edit data pelanggan 
@@ -1556,14 +1591,13 @@ def mode_admin(uname, nama_lengkap_logged):
                     # Mengecek apakah ID pelanggan ada dalam database
                     cur.execute("SELECT COUNT(*) FROM pelanggan WHERE id_pelanggan = %s", (id_pelanggan,))
                     if cur.fetchone()[0] == 0:
-                        print("Maaf, ID pelanggan yang Anda cari tidak ada. Silakan cek kembali.")
+                        print("\nMaaf, ID pelanggan yang Anda cari tidak ada. Silakan cek kembali.")
                         postgresql_cls(conn, cur)
-                        input("\n\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
-                        mode_admin(uname, nama_lengkap_logged)
-                        return
+                        input("\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
+                        data_customer(nama_lengkap_logged)
                 
                     # Meminta data baru dari user
-                    nama_baru = input("Masukkan nama baru pelanggan (kosongkan jika tidak ingin mengubah): ")
+                    nama_baru = input("\nMasukkan nama baru pelanggan (kosongkan jika tidak ingin mengubah): ")
                     telp_baru = input("Masukkan nomor telepon baru pelanggan (kosongkan jika tidak ingin mengubah): ")
                     uname_baru = input("Masukkan username baru pelanggan (kosongkan jika tidak ingin mengubah): ")
                     password_baru = input("Masukkan password baru pelanggan (kosongkan jika tidak ingin mengubah): ")
@@ -1608,26 +1642,26 @@ def mode_admin(uname, nama_lengkap_logged):
                             # Melakukan commit perubahan ke database
                             conn.commit()
                         
-                            print("Data pelanggan telah diubah!")
+                            print("\nData pelanggan telah diubah!")
                         except psycopg2.Error as e:
                             # Menampilkan pesan kesalahan jika gagal melakukan update
-                            print("Gagal mengubah data pelanggan:", e)
+                            print("\nGagal mengubah data pelanggan:", e)
                         
                             # Melakukan rollback jika terjadi kesalahan
                             conn.rollback()
                     else:
                         # Pesan jika tidak ada data yang diubah
-                        print("Tidak ada data yang diubah.")
+                        print("\nTidak ada data yang diubah.")
                 except psycopg2.Error as e:
                     # Menangani kesalahan koneksi atau query
-                    print(f"Terjadi kesalahan: {e}")
+                    print(f"\nTerjadi kesalahan: {e}")
                     conn.rollback()
                 finally:
                     # Menutup kursor dan koneksi
                     cur.close()
                     conn.close()
                 
-                input("\n\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
+                input("\nTekan [enter] untuk kembali ke Menu Data Pelanggan")
                 data_customer(nama_lengkap_logged)
             
             elif choice_4 == '4':   # Hapus data pelanggan 
@@ -1641,7 +1675,7 @@ def mode_admin(uname, nama_lengkap_logged):
                 if id_pelanggan == '':
                     data_customer(nama_lengkap_logged) 
                 
-                konfirmasi = input(f"[Y/N] apakah anda yain untuk menghapus data dengan ID '{id_pelanggan}'? Tindakan tidak dapat diurungkan")
+                konfirmasi = input(f"\n[Y/N] apakah anda yain untuk menghapus data dengan ID '{id_pelanggan}'? Tindakan tidak dapat diurungkan : ")
                 if konfirmasi.upper() == 'Y':
 
                     """Menghapus data pelanggan dari database."""
@@ -1665,29 +1699,20 @@ def mode_admin(uname, nama_lengkap_logged):
                     
                         # Memeriksa apakah ada baris yang dihapus
                         if cur.rowcount > 0:
-                            print("Data pelanggan telah dihapus!")
-                            result = True
+                            print("\nData pelanggan telah dihapus!")
                         else:
-                            print("pelanggan dengan ID tersebut tidak ditemukan.")
-                            result = False
+                            print("\nPERHATIAN : Pelanggan dengan ID tersebut tidak ditemukan.")
                     except Exception as e:
-                        print(f"Terjadi kesalahan: {e}")
-                        result = False
+                        print(f"\nPERHATIAN : Terjadi kesalahan: {e}\nData gagal dihapus")
                         conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
                     finally:
                         cur.close()  # Menutup kursor
                         conn.close()  # Menutup koneksi
                 
-                    input("\n\nTekan [enter] untuk kembali ke Menu pelanggan")
-                    mode_admin(uname, nama_lengkap_logged)
-                
-                    if result == True:
-                        print('Data berhasil terhapus')
-                    else:
-                        print('Data gagal dihapus')
+                    input("\nTekan [enter] untuk kembali ke Menu pelanggan")
                 
                 else:
-                    input("Data batal dihapus, tekan [Enter] untuk kembali ke Menu Data Pelanggan")
+                    input("\nData batal dihapus, tekan [Enter] untuk kembali ke Menu Data Pelanggan")
                 data_customer(nama_lengkap_logged)
 
             elif choice_4 == '5':
@@ -1698,7 +1723,7 @@ def mode_admin(uname, nama_lengkap_logged):
 
         data_customer(nama_lengkap_logged)
 
-    # 4.5 DATA HEWAN PELIHARAAN v UI
+    # 4.5 DATA HEWAN PELIHARAAN v UI FIXED
     elif admin_choice == '5':
         def lihat_data_hewan():
             conn, cur = postgresql_connect()
@@ -1711,6 +1736,7 @@ def mode_admin(uname, nama_lengkap_logged):
             FROM hewan hew
             JOIN pelanggan pel on pel.id_pelanggan = hew.id_pelanggan
             JOIN jenis_hewan jen on jen.id_jenishewan = hew.id_jenishewan
+            ORDER BY hew.id_hewan ASC
             """
            
             # Menjalankan query
@@ -1737,6 +1763,7 @@ def mode_admin(uname, nama_lengkap_logged):
             query = """
             SELECT *
             FROM jenis_hewan
+            ORDER BY id_jenishewan
             """
            
             # Menjalankan query
@@ -1774,40 +1801,37 @@ def mode_admin(uname, nama_lengkap_logged):
 
                 # Menambah hewan baru ke database
                 # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
-                result = False
                 if not nama_hewan or not tanggal_lahir or not id_pelanggan or not id_jenishewan:
-                    return False
+                    print("\nPERHATIAN : Semua data harus diisi! Batal menambahkan data...")
                 else:
-                    """Menambahkan data hewan baru ke database."""
-                    # Membuat cursor untuk berinteraksi dengan database
-                    cur = conn.cursor()
-                
-                    # Query SQL untuk menambahkan data hewan baru
-                    query = """
-                    INSERT INTO hewan (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan)
-                    VALUES (%s, %s, %s, %s)
-                    """
-                
-                    # Menjalankan query dengan data yang diberikan
-                    cur.execute(query, (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan))
-                
-                    # Melakukan commit perubahan ke database
-                    conn.commit()
-                
-                    # Mengambil jumlah baris yang dimodifikasi oleh query
-                    boolean = cur.rowcount
-                
-                    # Menutup cursor
-                    cur.close()
-                
-                    print("hewan baru telah ditambahkan!")
-                    result = True
+                    try:
+                        """Menambahkan data hewan baru ke database."""
+                        # Membuat cursor untuk berinteraksi dengan database
+                        cur = conn.cursor()
+                    
+                        # Query SQL untuk menambahkan data hewan baru
+                        query = """
+                        INSERT INTO hewan (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan)
+                        VALUES (%s, %s, %s, %s)
+                        """
+                    
+                        # Menjalankan query dengan data yang diberikan
+                        cur.execute(query, (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan))
+                    
+                        # Melakukan commit perubahan ke database
+                        conn.commit()
+                    
+                        # Mengambil jumlah baris yang dimodifikasi oleh query
+                        boolean = cur.rowcount
+                    
+                        # Menutup cursor
+                        cur.close()
+                    
+                        print("\nHewan baru BERHASIL ditambahkan!")
+                    except psycopg2.Error as e:
+                        print("\nPERHATIAN : Terdapat kesalahan pada data yang anda masukkan! Data hewan GAGAL ditambahkan")
 
-
-                if result:
-                    input('Tambah data berhasil')
-                else:
-                    input('Tambah data gagal')
+                input("\nTekan [Enter] untuk kembali ke menu Hewan : ")
                 menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '5':  # FITUR TAMBAH DATA JENIS HEWAN
@@ -1819,13 +1843,10 @@ def mode_admin(uname, nama_lengkap_logged):
                 conn, cur = postgresql_connect()
                 nama_jenis = input("Masukkan nama_jenis : ")
 
-
                 # Menambah hewan baru ke database
                 # Cek apakah semua field diisi, jika tidak maka cetak pesan dan return False
                 if not nama_jenis:
-                    print("Nama jenis hewan tidak boleh kosong.")
-                    input("\n\nTekan [enter] untuk kembali ke Menu jenis hewan")
-                    mode_admin(uname, nama_lengkap_logged)
+                    print("PERHATIAN : Nama jenis hewan tidak boleh kosong.")
                 else:
                     try:
                         """Menambahkan data hewan baru ke database."""
@@ -1835,49 +1856,42 @@ def mode_admin(uname, nama_lengkap_logged):
                         VALUES (%s)
                         """
 
-
                         # Menjalankan query dengan data yang diberikan
                         cur.execute(query, (nama_jenis,))
                     
                         # Melakukan commit perubahan ke database
                         conn.commit()
 
-
                         # Mengambil jumlah baris yang dimodifikasi oleh query
                         if cur.rowcount > 0:
-                            print("Jenis hewan baru telah ditambahkan!")
-                            result = True
+                            print("\nJenis hewan baru telah ditambahkan! Tambah data berhasil")
                         else:
-                            print("Tambah data gagal.")
-                            result = False
+                            print("\nPERHATIAN : Tambah data gagal!")
                     except Exception as e:
-                        print(f"Terjadi kesalahan: {e}")
-                        result = False
+                        print(f"PERHATIAN : Terjadi kesalahan: {e}")
                         conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
                     finally:
                         cur.close()  # Menutup kursor
                         conn.close()  # Menutup koneksi
 
-                    if result:
-                        input('Tambah data berhasil\n\nTekan [enter] untuk kembali ke Menu jenis hewan')
-                    else:
-                        input('Tambah data gagal\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan')
-                    menu_hewan_peliharaan(nama_lengkap_logged)
+                input('\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan')
+                menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '3': #FITUR LIHAT DATA HEWAN
+                os.system('cls')
                 print("ADMIN>DASHBOARD>DATA HEWAN PELIHARAAN>LIHAT DATA HEWAN")
                 print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
            
                 lihat_data_hewan()
                 input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
-                mode_admin(uname, nama_lengkap_logged)
+                menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '7': #FITUR LIHAT DATA JENIS HEWAN
                 print("ADMIN>DASHBOARD>DATA HEWAN PELIHARAAN>LIHAT DATA JENIS HEWAN")
                 print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
            
                 lihat_data_jenishewan()
-                input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+                input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
                 menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '2': #FITUR EDIT DATA HEWAN
@@ -1887,7 +1901,10 @@ def mode_admin(uname, nama_lengkap_logged):
            
                 # Meminta ID hewan yang ingin diubah
                 lihat_data_hewan()
-                id_hewan = int(input("Masukkan ID hewan yang ingin diubah: "))
+                id_hewan = input("Masukkan ID hewan yang ingin diubah: ")
+
+                if not id_hewan:
+                    menu_hewan_peliharaan(nama_lengkap_logged)
             
                 conn, cur = postgresql_connect()
             
@@ -1895,11 +1912,10 @@ def mode_admin(uname, nama_lengkap_logged):
                     # Mengecek apakah ID hewan ada dalam database
                     cur.execute("SELECT COUNT(*) FROM hewan WHERE id_hewan = %s", (id_hewan,))
                     if cur.fetchone()[0] == 0:
-                        print("Maaf, ID hewan yang Anda cari tidak ada. Silakan cek kembali.")
+                        print("\nMaaf, ID hewan yang Anda cari tidak ada. Silakan cek kembali.")
                         postgresql_cls(conn, cur)
-                        input("\n\nTekan [enter] untuk kembali ke menu hewan peliharaan")
-                        mode_admin(uname, nama_lengkap_logged)
-                        return
+                        input("\nTekan [enter] untuk kembali ke menu hewan peliharaan")
+                        menu_hewan_peliharaan(nama_lengkap_logged)
                 
                     # Meminta data baru dari user
                     nama_hewan_baru = input("Masukkan nama baru hewan (kosongkan jika tidak ingin mengubah): ")
@@ -1940,33 +1956,23 @@ def mode_admin(uname, nama_lengkap_logged):
                     if updates:
                         # Membuat query update dengan bagian yang perlu diupdate
                         query = f"UPDATE hewan SET {', '.join(updates)} WHERE id_hewan = %s"
-                        try:
-                            # Menjalankan query dengan nilai yang disediakan
-                            cur.execute(query, values)
+                        cur.execute(query, values)
+                        conn.commit()
+                        print("Data hewan telah diubah!")
                         
-                            # Melakukan commit perubahan ke database
-                            conn.commit()
-                        
-                            print("Data hewan telah diubah!")
-                        except psycopg2.Error as e:
-                            # Menampilkan pesan kesalahan jika gagal melakukan update
-                            print("Gagal mengubah data hewan:", e)
-                        
-                            # Melakukan rollback jika terjadi kesalahan
-                            conn.rollback()
                     else:
                         # Pesan jika tidak ada data yang diubah
                         print("Tidak ada data yang diubah.")
                 except psycopg2.Error as e:
                     # Menangani kesalahan koneksi atau query
-                    print(f"Terjadi kesalahan: {e}")
+                    print(f"\nPERHATIAN : Terjadi kesalahan pada data yang anda masukkan")
                     conn.rollback()
                 finally:
                     # Menutup kursor dan koneksi
                     cur.close()
                     conn.close()
                 
-                input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+                input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
                 menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '6': #FITUR EDIT DATA JENIS HEWAN
@@ -1976,7 +1982,10 @@ def mode_admin(uname, nama_lengkap_logged):
            
                 # Meminta ID jenis hewan yang ingin diubah
                 lihat_data_jenishewan()
-                id_jenishewan = int(input("Masukkan ID jenis hewan yang ingin diubah: "))
+                id_jenishewan = input("Masukkan ID jenis hewan yang ingin diubah: ")
+
+                if not id_jenishewan:
+                    menu_hewan_peliharaan(nama_lengkap_logged)
             
                 conn, cur = postgresql_connect()
             
@@ -1984,11 +1993,10 @@ def mode_admin(uname, nama_lengkap_logged):
                     # Mengecek apakah ID jenis hewan ada dalam database
                     cur.execute("SELECT COUNT(*) FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
                     if cur.fetchone()[0] == 0:
-                        print("Maaf, ID jenis hewan yang Anda cari tidak ada. Silakan cek kembali.")
+                        print("\nPERHATIAN : ID jenis hewan yang Anda cari tidak ada. Silakan cek kembali.")
                         postgresql_cls(conn, cur)
-                        input("\n\nTekan [enter] untuk kembali ke menu hewan peliharaan")
+                        input("\nTekan [enter] untuk kembali ke menu hewan peliharaan")
                         mode_admin(uname, nama_lengkap_logged)
-                        return
                 
                     # Meminta data baru dari user
                     nama_jenis_baru = input("Masukkan nama baru jenis hewan (kosongkan jika tidak ingin mengubah): ")
@@ -2018,26 +2026,26 @@ def mode_admin(uname, nama_lengkap_logged):
                             # Melakukan commit perubahan ke database
                             conn.commit()
                         
-                            print("Data jenis hewan telah diubah!")
+                            print("\nData jenis hewan telah diubah!")
                         except psycopg2.Error as e:
                             # Menampilkan pesan kesalahan jika gagal melakukan update
-                            print("Gagal mengubah data jenis hewan:", e)
+                            print("PERHATIAN : Gagal mengubah data jenis hewan:", e)
                         
                             # Melakukan rollback jika terjadi kesalahan
                             conn.rollback()
                     else:
                         # Pesan jika tidak ada data yang diubah
-                        print("Tidak ada data yang diubah.")
+                        print("\nTidak ada data yang diubah")
                 except psycopg2.Error as e:
                     # Menangani kesalahan koneksi atau query
-                    print(f"Terjadi kesalahan: {e}")
+                    print(f"\nPERHATIAN : Terjadi kesalahan: {e}")
                     conn.rollback()
                 finally:
                     # Menutup kursor dan koneksi
                     cur.close()
                     conn.close()
                 
-                input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+                input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
                 menu_hewan_peliharaan(nama_lengkap_logged)
             
             elif choice_5 == '4': #FITUR HAPUS DATA HEWAN
@@ -2072,39 +2080,33 @@ def mode_admin(uname, nama_lengkap_logged):
                         count_reservasi = cur.fetchone()[0]
                     
                         if count_rekam_medis == 0 and count_reservasi == 0:
-                            # Menghapus data hewan dari tabel hewan
-                            cur.execute("DELETE FROM hewan WHERE id_hewan = %s", (id_hewan,))
-                        
-                            # Melakukan commit perubahan ke database
-                            conn.commit()
-                        
-                            if cur.rowcount > 0:
-                                print("Data hewan telah dihapus!")
-                                result = True
+                            konfirmasi_hapus = input(f"[Y/N] Apakah anda yakin untuk menghapus data '{id_hewan}'? TIndakan tidak dapat diurungkan : ")
+                            if konfirmasi_hapus.upper() == 'Y':
+                                # Menghapus data hewan dari tabel hewan
+                                cur.execute("DELETE FROM hewan WHERE id_hewan = %s", (id_hewan,))
+                            
+                                # Melakukan commit perubahan ke database
+                                conn.commit()
+                            
+                                if cur.rowcount > 0:
+                                    print("\nData hewan BERHASIL dihapus!")
+                                else:
+                                    print("\nPERHATIAN : Hewan dengan ID tersebut tidak ditemukan.")
                             else:
-                                print("Hewan dengan ID tersebut tidak ditemukan.")
-                                result = False
+                                print("Data batal dihapus")
                         else:
-                            print("Hewan ini masih terkait dengan rekam medis atau reservasi. Tidak bisa dihapus.")
-                            result = False
+                            print("\nPERHATIAN : Hewan ini masih terkait dengan rekam medis atau reservasi. Tidak bisa dihapus.")
                     else:
-                        print("Hewan dengan ID tersebut tidak ditemukan.")
-                        result = False
+                        print("\nPERHATIAN : Hewan dengan ID tersebut tidak ditemukan!")
                 except Exception as e:
-                    print(f"Terjadi kesalahan: {e}")
-                    result = False
+                    print(f"\nTerjadi kesalahan pada masukan yang anda masukkan")
                     conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
                 finally:
                     cur.close()  # Menutup kursor
                     conn.close()  # Menutup koneksi
             
-                input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+                input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
                 menu_hewan_peliharaan(nama_lengkap_logged)
-            
-                if result:
-                    print('Data berhasil terhapus')
-                else:
-                    print('Data gagal dihapus')
 
             elif choice_5 == '8': #FITUR HAPUS DATA JENIS HEWAN
                 os.system('cls')  # Membersihkan layar (hanya berfungsi di Windows)
@@ -2113,58 +2115,58 @@ def mode_admin(uname, nama_lengkap_logged):
            
                 lihat_data_jenishewan()
 
-                id_jenishewan = int(input("Masukkan ID jenis hewan yang ingin dihapus: "))
-                """Menghapus data jenis hewan dari database."""
+                id_jenishewan = input("Masukkan ID jenis hewan yang ingin dihapus: ")
 
-                conn, cur = postgresql_connect()
-            
-                try:
-                    # Memeriksa apakah jenis hewan tersebut ada
-                    cur.execute("SELECT COUNT(*) FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
-                    count_jenishewan = cur.fetchone()[0]
+                if not id_jenishewan :
+                    menu_hewan_peliharaan(nama_lengkap_logged)
+                konfirmsai_hapus = input(f"[Y/N] Apakah anda yakin untuk menghapus ID'{id_jenishewan}'? Tindakan tidak dapat diurungkan : ")
+                if konfirmsai_hapus.upper() == 'Y':
+                    """Menghapus data jenis hewan dari database."""
 
-                    if count_jenishewan > 0:
-                        # Memeriksa apakah jenis hewan tersebut ada di tabel hewan
-                        cur.execute("SELECT COUNT(*) FROM hewan WHERE id_jenishewan = %s", (id_jenishewan,))
-                        count_hewan = cur.fetchone()[0]
-                    
-                        if count_hewan == 0:
-                            # Menghapus data jenis hewan dari tabel jenis_hewan
-                            cur.execute("DELETE FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                    conn, cur = postgresql_connect()
+                
+                    try:
+                        # Memeriksa apakah jenis hewan tersebut ada
+                        cur.execute("SELECT COUNT(*) FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                        count_jenishewan = cur.fetchone()[0]
+
+                        if count_jenishewan > 0:
+                            # Memeriksa apakah jenis hewan tersebut ada di tabel hewan
+                            cur.execute("SELECT COUNT(*) FROM hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                            count_hewan = cur.fetchone()[0]
                         
-                            # Melakukan commit perubahan ke database
-                            conn.commit()
-                        
-                            if cur.rowcount > 0:
-                                print("Data jenis hewan telah dihapus!")
-                                result = True
+                            if count_hewan == 0:
+                                # Menghapus data jenis hewan dari tabel jenis_hewan
+                                cur.execute("DELETE FROM jenis_hewan WHERE id_jenishewan = %s", (id_jenishewan,))
+                            
+                                # Melakukan commit perubahan ke database
+                                conn.commit()
+                            
+                                if cur.rowcount > 0:
+                                    print("\nData jenis hewan telah dihapus!")
+                                else:
+                                    print("\nPERHATIAN : Jenis hewan dengan ID tersebut tidak ditemukan.")
                             else:
-                                print("Jenis hewan dengan ID tersebut tidak ditemukan.")
-                                result = False
+                                print("\nPERHATIAN : Jenis hewan ini MASIH terkait dengan hewan. Tidak bisa dihapus.")
                         else:
-                            print("Jenis hewan ini masih terkait dengan hewan. Tidak bisa dihapus.")
-                            result = False
-                    else:
-                        print("Jenis hewan dengan ID tersebut tidak ditemukan.")
-                        result = False
-                except Exception as e:
-                    print(f"Terjadi kesalahan: {e}")
-                    result = False
-                    conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
-                finally:
-                    cur.close()  # Menutup kursor
-                    conn.close()  # Menutup koneksi
-            
-                input("\n\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
-                menu_hewan_peliharaan(nama_lengkap_logged)
-            
-                if result:
-                    print('Data berhasil terhapus')
+                            print("\nPERHATIAN : Jenis hewan dengan ID tersebut tidak ditemukan.")
+                    except Exception as e:
+                        print(f"Terjadi kesalahan: {e}")
+                        conn.rollback()  # Membatalkan perubahan jika terjadi kesalahan
+                    finally:
+                        cur.close()  # Menutup kursor
+                        conn.close()  # Menutup koneksi
+
                 else:
-                    print('Data gagal dihapus')
+                    print("\nData batal dihapus")
+            
+                input("\nTekan [enter] untuk kembali ke Menu Hewan Peliharaan")
+                menu_hewan_peliharaan(nama_lengkap_logged)
 
             elif choice_5 == '9':
                 mode_admin(uname, nama_lengkap_logged)
+            menu_hewan_peliharaan(nama_lengkap_logged)
+        
         menu_hewan_peliharaan(nama_lengkap_logged)
 
     # 4.6 DATA DOKTER v UI
@@ -2933,6 +2935,7 @@ mini_header = minihead_a+'\n'+minihead_b+'\n'+minihead_c+'\n'+minigead_d+'\n'
 delay_welcome = 0 # ANIMASI PADA WELCOMING PAGE
 
 format_table = 'fancy_grid'
+textwraplen = 15
 
 # EKSEKUSI PROGRAM --------------------------------------------------------------------------------
 
