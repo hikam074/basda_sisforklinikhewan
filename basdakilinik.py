@@ -1,18 +1,31 @@
 import psycopg2
+from psycopg2 import sql
 import os
 import sys
 import time
 import tabulate
-import pandas as pd
 import datetime
 import textwrap
 
 # SESUAIKAN DENGAN POSTGRE KALIAN -----------------------------------------------------------------
+def base_postgresql_connect():
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
+        password="xxx",
+        host="localhost",
+        port="5432"
+    )
+    conn.autocommit = True
+    cur = conn.cursor()
+    
+    return conn, cur   
+
 def postgresql_connect():                   # menghubungkan postgresql dan python
     conn = psycopg2.connect(
         dbname="SatSet Care",
         user="postgres",
-        password="dammahom51",
+        password="xxx",
         host="localhost",
         port="5432"
     )
@@ -40,7 +53,13 @@ def postgresql_alldata_akun(conn, cur):      # memasukkan semua data akun ke sat
     listdata = listdatapelanggan
     listdata.append(listdatastaf)
     listdata.append(listdatadokter)
-    return listdata
+    return listdata 
+
+# -------------------------------------------------------------------------------------------------
+
+# DEF ESENSIAL ------------------------------------------------------------------------------------
+def wrap_text(text, width):
+    return "\n".join(textwrap.wrap(text, width))
 # -------------------------------------------------------------------------------------------------
  
 # 0. WELCOMING INTERFACE --------------------------------------------------------------------------
@@ -65,7 +84,7 @@ def welcome_interface():
 
 # -------------------------------------------------------------------------------------------------
 
-# 1. LAUNCH PAGE v----------------------------------------------------------------------------------
+# 1. LAUNCH PAGE v UI FIXED -----------------------------------------------------------------------
 def launch_page():
 
     # 1.1 LOGIN v
@@ -160,6 +179,9 @@ def launch_page():
 
     # I.4 EXIT v
     def exit():
+        os.system('cls')
+        print(header_fancy)
+        print("\nMenyelesaikan program...\n\nTerima kasih telah menggunakan program ini!")
         sys.exit()
 
     # Interface Launch Page
@@ -172,14 +194,17 @@ def launch_page():
 
     # 1.1 LOGIN v
     if launch_choice == '1':
+        print(header_fancy)
         login()
 
     # 1.2 SIGNUP v
     elif launch_choice == '2':
+        print(header_fancy)
         signup()
 
     # 1.3 MANUAL BOOK v
     elif launch_choice == '3':
+        print(header_fancy)
         manual_book()
         launch_page()
 
@@ -193,227 +218,335 @@ def launch_page():
 
 # -------------------------------------------------------------------------------------------------
 
-# 2. FITUR DOKTER ---------------------------------------------------------------------------------
+# 2. FITUR DOKTER v UI FIXED ----------------------------------------------------------------------
 def mode_dokter(uname, nama_lengkap_logged):
-    def lihat_data_layanan(conn, cur):  # v
-        """Menampilkan data layanan dari database."""
-        cursor = conn.cursor()
-        # Query untuk mengambil semua data dari tabel 'layanan'
-        query = """
-        SELECT *
-        FROM layanan
-        """
-        cursor.execute(query)
-        # Mendapatkan semua data layanan
-        data_layanan = cursor.fetchall()
-        cursor.close()
-            
-        headers = ['ID', 'Nama Layanan', 'Harga Layanan']
-        # Menampilkan data layanan dalam bentuk tabel
-        print(tabulate.tabulate(data_layanan, headers=headers, tablefmt=f"{format_table}"))
-
     def rekam_medis(pilihan, uname, conn, cur):
         match pilihan:
             case '1': # 
-                nama_hewan=input('Nama hewan: ') # inputan nama hewan untuk mengecek hewan yang mana yg benar 
-                nama_pelanggan=input('Nama pelanggan: ')
-                cur.execute(f"select id_hewan from hewan where nama_hewan ilike '{nama_hewan}' and id_pelanggan = (select id_pelanggan from pelanggan where nama_pelanggan ilike '{nama_pelanggan}')")
-                no_id_hewan=cur.fetchall() # menghasilkan id nama hewan yang dicari
+                conn,cur = postgresql_connect()
+                os.system('cls')
+                print("DOKTER>DASHBOARD>REKAM MEDIS>TAMBAH DATA")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+
+                # menentukan ID dokter
                 cur.execute(f"select id_dokter from dokter where uname_dokter= '{uname}'")
-                id_dokter=cur.fetchall() # menggunakan username untuk pencarian id dokter
-                cur.execute("select * from layanan")
-                data_layanan=cur.fetchall()
-                nilai1=pd.DataFrame(data_layanan,columns=['Id Layanan','Nama Layanan','Harga Layanan'])
-                print (nilai1)
-                id_layanan_hewan=input('Pilih jenis layanan [Ketik Idnya]: ') #pilih layanan
-                cur.execute(f'select id_layanan from layanan where id_layanan={id_layanan_hewan}')
-                id_layanan=cur.fetchall()
-                hasil_medis=input('Hasil Medis: ') # hasil medis
-                catatan=input('Catatan:') # hasil catatan
+                id_dokter = cur.fetchone() # menggunakan username untuk pencarian id dokter
+                id_dokter = str(id_dokter).strip(")(,")
+
+                # menampilkan data pelanggan
+                cur.execute(f"SELECT h.id_hewan, h.nama_hewan, p.nama_pelanggan FROM hewan h JOIN pelanggan p ON (h.id_pelanggan = p.id_pelanggan) ORDER BY nama_pelanggan, nama_hewan ASC")
+                pelanggan = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                print(tabulate.tabulate(pelanggan, headers=headers, tablefmt=f"{format_table}")) 
+                # meminta input ID pelanggan
+                id_hewan = input("\nMasukkan ID hewan : ")
+
                 try:
-                    tgl_waktu_pemeriksaan=datetime.datetime.now()
-                    cur.execute(f"INSERT INTO rekam_medis (id_hewan,id_dokter,id_layanan,tgl_waktu_pemeriksaan,hasil_medis,catatan_tambahan)  VALUES ({no_id_hewan[0][0]},{id_dokter[0][0]},{id_layanan[0][0]},'{tgl_waktu_pemeriksaan}','{hasil_medis}','{catatan}')")
-                    conn.commit()
-                except:
-                    print("Inputan data Anda salah, cek kembali")
-            case'2': # fitur ubah data di rekam medis
-                cur.execute("""select h.nama_hewan,d.nama_dokter,l.nama_layanan,
+                    # ujicoba ID hewan
+                    cur.execute(f"SELECT COUNT(*) FROM hewan where id_hewan = {id_hewan}")
+                    cek_hewan = cur.fetchone() # menggunakan username untuk pencarian id dokter
+                    cek_hewan = str(cek_hewan).strip(")(,")
+                    if cek_hewan != '1':
+                        print("PERHATIAN : Data yang anda cari tidak ada!")
+                        input("Tekan [Enter] untuk kembali ke Menu Rekam Medis")
+                        postgresql_cls(conn, cur)
+                        dokter_rekam_medis()
+
+                    # menampilkan data layanan
+                    os.system('cls')
+                    print("DOKTER>DASHBOARD>REKAM MEDIS>TAMBAH DATA")
+                    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                    cur.execute("SELECT r.id_reservasi, h.nama_hewan, r.id_layanan, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan FROM layanan l JOIN reservasi r ON (l.id_layanan = r.id_layanan) JOIN hewan h ON (r.id_hewan = h.id_hewan)")
+                    data_layanan = cur.fetchall()
+                    headers = [i[0] for i in cur.description]
+                    print(tabulate.tabulate(data_layanan, headers=headers, tablefmt=f"{format_table}")) 
+                    # meminta input ID layanan
+                    id_layanan = input("Masukkan ID layanan : ")
+                    try:
+                        cur.execute(f"SELECT h.nama_hewan, l.nama_layanan FROM hewan h JOIN reservasi r ON (h.id_hewan = r.id_hewan) JOIN layanan l ON (r.id_layanan = l.id_layanan) WHERE h.id_hewan = {id_hewan} AND l.id_layanan = {id_layanan} LIMIT 1")
+                        preview_hewan_layanan = cur.fetchall()
+                        headers = [i[0] for i in cur.description]
+                        os.system('cls')
+                        print("DOKTER>DASHBOARD>REKAM MEDIS>TAMBAH DATA")
+                        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                        print(tabulate.tabulate(preview_hewan_layanan, headers=headers, tablefmt=f"{format_table}")) 
+                        # meminta rekam medis dan catata
+                        hasil_medis = input("Masukkan rekam medis :\n")
+                        if hasil_medis == '':
+                            print("PERHATIAN : Rekam Medis tidak boleh kosong!")
+                            input("Tekan [Enter] untuk kembali ke Menu Rekam Medis")
+                            postgresql_cls(conn, cur)
+                            dokter_rekam_medis()
+                        catatan = input("Masukkan catatan : \n")
+                        try:
+                            tgl_waktu_pemeriksaan = datetime.datetime.now()
+                            cur.execute(f"""INSERT INTO rekam_medis
+                                        (id_hewan,id_dokter,id_layanan,tgl_waktu_pemeriksaan,hasil_medis,catatan_tambahan)
+                                        VALUES ({id_hewan},{id_dokter},{id_layanan},'{tgl_waktu_pemeriksaan}',{hasil_medis},'{catatan}')""")
+                            conn.commit()
+                            print("Data berhasil ditambahkan !")
+                        except psycopg2.Error as e:
+                            print("PERHATIAN : Terdapat kesalahan pada data yang hendak anda masukkan! Data gagal dimasukkan")
+
+                    except psycopg2.Error as e:
+                        print("PERHATIAN : ID layanan yang anda masukkan tidak valid!")
+                
+                except psycopg2.Error as e:
+                    print("PERHATIAN : ID hewan yang anda masukkan tidak valid!")
+                finally:
+                    postgresql_commit_nclose(conn, cur)
+                    input("Tekan [Enter] untuk kembali ke Menu Rekam Medis : ")
+
+            case '2': # fitur ubah data di rekam medis
+                os.system('cls')
+                print(f"DOKTER>DASHBOARD>REKAM MEDIS>UBAH DATA")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+
+                conn, cur = postgresql_connect()
+
+                cur.execute(f"""select r.id_rekamed, h.nama_hewan,d.nama_dokter,l.nama_layanan,
                             r.tgl_waktu_pemeriksaan,r.hasil_medis,r.catatan_tambahan from rekam_medis r join 
                             hewan h on (r.id_hewan=h.id_hewan) 
-                            join dokter d on (d.id_dokter=r.id_dokter) join layanan l on (r.id_layanan=l.id_layanan) """)
-                df=cur.fetchall()
-                columns=['Id Rekam Medis','Nama Hewan','Nama Dokter','Nama Layanan','Tanggal Pemeiksaan','Hasil Medis','Catatan Tambahan']
-                tabel = tabulate.tabulate(df,columns,tablefmt='fancy_grid')
-                print('[1] Nama Hewan\n[2] Nama Dokter\n[3] Layanan\n[4] Hasil Medis\n[5] Caatatan\n[6] Semua\n[Enter] Exit ')
-                lagi=int(input('Pilih: '))
-                pilih_lagi=int(lagi-1)
-                print(tabel)
-                siapa_yang_dirubah=input("No id rekam medis yang akan dirubah:")
-                def nama_hewan_yang_benar():
-                    hewan=input(f"Nama hewan yang benar: ")
-                    try:
-                        cur.execute(f" select id_hewan from hewan where nama_hewan='{hewan}'")
-                        sintaksi=cur.fetchall()
-                        sintaksi_baru=f"update rekam_medis set id_hewan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
-                        cur.execute(sintaksi_baru)
-                        conn.commit()
-                        print("Berhasil")
-                        time.sleep(1)
-                    except :
-                        print(f"Nama hewan tidak ditemukan, cek kembali")
-                        time.sleep(1)
-                    os.system("cls")
-                def nama_doker_yang_benar():
-                    dokter=input(f"Nama dokter yang benar: ")
-                    try:
-                        cur.execute(f" select id_dokter from dokter where nama_dokter='{dokter}'")
-                        sintaksi=cur.fetchall()
-                        sintaksi_baru=f"update rekam_medis set id_dokter = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
-                        cur.execute(sintaksi_baru)
-                        conn.commit()
-                        print("Berhasil")
-                        time.sleep(1)
-                    except:
-                        print("Nama dokter tidak ditemukan, cek kembali")
-                        time.sleep(1)
-                    os.system("cls")
-                def layanan_yang_benar():
-                    ketik=input(f"Nama layanan yang benar: ") 
-                    try:
-                        cur.execute(f" select id_layanan from layanan where nama_layanan='{ketik}'")
-                        sintaksi=cur.fetchall()
-                        sintaksi_baru=f"update rekam_medis set id_layanan = {sintaksi[0][0]} where id_rekamed={siapa_yang_dirubah}"
-                        cur.execute(sintaksi_baru)
-                        conn.commit()
-                        print("Berhasil")
-                        time.sleep(1)
-                    except:
-                        print("Nama layanan ditemukan, cek kembali")
-                        time.sleep(1)
-                    os.system("cls")
-                            
-                def hasil_medis_yang_benar():
-                    ketik=input(f"Hasil medis yang benar: ")
-                    sintaksi_baru=f"update rekam_medis set hasil_medis= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
-                    cur.execute(sintaksi_baru)
-                    conn.commit()
-                    print("Berhasil")
-                    os.system("CLS")
-                def catatan_yang_benar():
-                    ketik=input(f"Nama catatan tambahan yang benar: ")
-                    sintaksi_baru=f"update rekam_medis set catatan_tambahan= '{ketik}' where id_rekamed={siapa_yang_dirubah}"
-                    cur.execute(sintaksi_baru)
-                    conn.commit()
-                    print("Berhasil")
-                    time.sleep(1)
-                    os.system("CLS")
-                if pilih_lagi ==0: 
-                        nama_hewan_yang_benar()
-                elif pilih_lagi==1:  #uabh dokter yang benar
-                        nama_doker_yang_benar()
-                elif pilih_lagi==2: # ubah layanan yg benar
-                        layanan_yang_benar()
-                elif pilih_lagi ==3: # ubah hasil medis yang benar
-                        hasil_medis_yang_benar()
-                elif pilih_lagi==4: # ubah catatan di rekam medis
-                        catatan_yang_benar()
-                # Ubah keseluruhan data
-                elif pilih_lagi==5:
-                    simpan=[nama_hewan_yang_benar(),nama_doker_yang_benar(),layanan_yang_benar(),hasil_medis_yang_benar(),catatan_yang_benar]
-                    for i in range(5):
-                        simpan[i]
-                else: # jika salah ketik terdapat pesan peringatan
-                    print('Maaf Anda salah ketik')
+                            join dokter d on (d.id_dokter=r.id_dokter) join layanan l on (r.id_layanan=l.id_layanan) WHERE d.uname_dokter = '{uname}'""")
+                
+                datarekammedis = cur.fetchall()
+                
+                headers = [i[0] for i in cur.description]
+
+                wrapped_datarekammedis = []
+                for row in datarekammedis:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_datarekammedis.append(wrapped_row)
+                
+                print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                id_revisi = input("Masukkan ID rekam medis yang hendak direvisi : ")
+
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM rekam_medis WHERE id_rekamed = {id_revisi} AND id_dokter = (SELECT id_dokter FROM dokter WHERE uname_dokter = '{uname}')")
+                    hasil_rekamed = cur.fetchone()
+                    hasil_rekamed = str(hasil_rekamed).strip(")(,")
+                    if hasil_rekamed == '1':
+                        header=["ID Hewan","ID Layanan","Rekam medis","Catatan"]
+                        simpan = ["id_hewan", "id_layanan", "hasil_medis", "catatan_tambahan"]
+                        os.system('cls')
+                        print("DOKTER>DASHBOARD>REKAM MEDIS>UBAH DATA")
+                        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+
+                        cur.execute(f"""select r.id_rekamed, h.nama_hewan,d.nama_dokter,l.nama_layanan,
+                            r.tgl_waktu_pemeriksaan,r.hasil_medis,r.catatan_tambahan from rekam_medis r join 
+                            hewan h on (r.id_hewan=h.id_hewan) 
+                            join dokter d on (d.id_dokter=r.id_dokter) join layanan l on (r.id_layanan=l.id_layanan) WHERE r.id_rekamed = '{id_revisi}'""")
+                
+                        datarekammedis = cur.fetchall()
+                        
+                        headers = [i[0] for i in cur.description]
+
+                        wrapped_datarekammedis = []
+                        for row in datarekammedis:
+                            wrapped_row = list(row)
+                            wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                            wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                            wrapped_datarekammedis.append(wrapped_row)
+                        
+                        print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+
+                        for i,value in enumerate(header):
+                            yes=input(f'[Y/N] Apakah {value} salah/hendak diubah? : ')
+                            if yes.upper()=='Y':
+                                if value == value:
+                                    try:
+                                        update=input(f'{value} baru : ')
+                                        if update == '':
+                                            print(f"{header[i]} tidak boleh kosong!")
+                                        else:
+                                            sintaksis= f"update rekam_medis set {simpan[i]} = '{update}' where id_rekamed ='{id_revisi}'"
+                                            cur.execute(sintaksis)
+                                            conn.commit()
+                                            print(f"{header[i]} berhasil diubah")
+                                    except psycopg2.Error as e:
+                                        print(f"PERHATIAN : Data yang anda coba masukkan tidak sesuai! Ubah data {value} gagal")
+                            else:
+                                print(f"{header[i]} tidak diubah")
+                    else:
+                        print("PERHATIAN : Data tidak ditemukan!")
+                except psycopg2.Error as e:
+                    print("PERHATIAN : ID yang anda masukkan tidak valid!")
+                input("\nTekan [Enter] untuk kembali ke Menu Rekam Medis : ")
+                postgresql_cls(conn, cur)
+                    
             case '3': # Lihat rekam medis
-                sintaksis ="""select r.id_rekamed, h.nama_hewan,d.nama_dokter,r.tgl_waktu_pemeriksaan,l.nama_layanan, r.hasil_medis,r.catatan_tambahan 
+                os.system('cls')
+                print(f"DOKTER>DASHBOARD>REKAM MEDIS>LIHAT DATA")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+
+                print("Data Rekam Medis yang telah anda catat : ")
+
+                sintaksis =f"""select r.id_rekamed, h.nama_hewan,d.nama_dokter,r.tgl_waktu_pemeriksaan,l.nama_layanan, r.hasil_medis,r.catatan_tambahan 
                 from rekam_medis r join hewan h on (h.id_hewan=r.id_hewan)
                 join dokter d on (d.id_dokter=r.id_dokter)
                 join layanan l on (l.id_layanan=r.id_layanan) order by r.id_rekamed asc"""
                 cur.execute(sintaksis)
                 nilai=cur.fetchall()
-                header = ["Id Rekam Medis", "Nama Hewan", "Nama Dokter","Tanggal Pemeriksaan", "Nama Layanan","Hasil Medis","Catatan Tambahan"]
-                tabel = tabulate.tabulate(nilai,headers=header, tablefmt="fancy_grid")
-                print(tabel)
-            case '4': # penghapusan rekam medis oleh dokter
-                id=input('Id rekam medis yang akan di hapus')
-                sintaksis_hapus= f"DELETE FROM rekam_medis WHERE id_rekamed = '{id}' " 
-                try:
-                    cur.execute(sintaksis_hapus)
-                    conn.commit()
-                except: 
-                    print("id rekam medis tidak ditemukan")
-            case _:
-                print('Kembali lagi dihalaman utama')
+                header = [i[0] for i in cur.description]
 
+                wrapped_nilai = []
+                for row in nilai:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_nilai.append(wrapped_row)      
+
+                tabel = tabulate.tabulate(wrapped_nilai,headers=header, tablefmt="fancy_grid")
+                print(tabel)
+                input("Tekan [Enter] untuk kembali ke Menu Rekam Medis : ")
+            
+            case '4': # penghapusan rekam medis oleh dokter
+                # menentukan ID dokter
+                conn, cur = postgresql_connect()
+                cur.execute(f"select id_dokter from dokter where uname_dokter= '{uname}'")
+                id_dokter = cur.fetchone() # menggunakan username untuk pencarian id dokter
+                id_dokter = str(id_dokter).strip(")(,")
+
+                os.system('cls')
+                print(f"DOKTER>DASHBOARD>REKAM MEDIS>HAPUS DATA")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+
+                sintaksis =f"""select r.id_rekamed, h.nama_hewan,d.nama_dokter,r.tgl_waktu_pemeriksaan,l.nama_layanan, r.hasil_medis,r.catatan_tambahan 
+                from rekam_medis r join hewan h on (h.id_hewan=r.id_hewan)
+                join dokter d on (d.id_dokter=r.id_dokter)
+                join layanan l on (l.id_layanan=r.id_layanan) WHERE r.id_dokter = {id_dokter} order by r.id_rekamed asc"""
+                cur.execute(sintaksis)
+                nilai=cur.fetchall()
+                header = [i[0] for i in cur.description]
+
+                wrapped_nilai = []
+                for row in nilai:
+                    wrapped_row = list(row)
+                    wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                    wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                    wrapped_nilai.append(wrapped_row)      
+
+                print(tabulate.tabulate(wrapped_nilai,headers=header, tablefmt="fancy_grid"))
+
+                id = input('Masukkan ID rekam medis yang akan di hapus : ')
+                konfirmasi_hapus = input(f"[Y/N] Apakah anda yakin untuk menghapus data rekamed '{id}'? tindakan ini tidak dapat diurungkan : ")
+                try:
+                    if konfirmasi_hapus.upper() == "Y":
+                        sintaksis_hapus= f"DELETE FROM rekam_medis WHERE id_rekamed = '{id}' AND id_dokter = {id_dokter}" 
+                        cur.execute(sintaksis_hapus)
+                        conn.commit()
+                        # cek kehapusan
+                        cur.execute(f"SELECT COUNT(*) FROM rekam_medis WHERE id_rekamed = '{id}'")
+                        cek_rekamed_hapus = cur.fetchone()
+                        cek_rekamed_hapus = str(cek_rekamed_hapus).strip(")(,")
+                        if cek_rekamed_hapus == '0':
+                            print("\nData BERHASIL dihapus.")
+                        else:
+                            print("\nPERHATIAN : Data rekamed diluar otoritas anda! Tidak dapat menghapus data")
+                    else:
+                        print("Data batal dihapus")
+                except: 
+                    print("PERHATIAN : ID rekamed yang hendak anda ubah tidak valid!")
+                input("\nTekan [Enter] untuk kembali ke Menu Rekam Medis : ")
+                postgresql_commit_nclose(conn, cur)
+            
+            case '5':
+                mode_dokter(uname, nama_lengkap_logged)
+            case _:
+                pass
+        dokter_rekam_medis()
+    
+    os.system('cls')
+    print("DOKTER>DASHBOARD")
+    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")}\n")
     conn, cur = postgresql_connect()
-    print(f"selamat datang, {nama_lengkap_logged} !")
-    print(" [1] Rekam Medis \n [2] Profil Anda \n [3] Log-out ")
+    print(f"Selamat datang, {nama_lengkap_logged} !\n")
+
+    print(" [1] Rekam Medis \n [2] Profil Anda \n\n [3] Log-out \n")
     dokter_choice = input("Silahkan pilih menu anda : ")
 
-    # 2.1 REKAM MEDIS fatal eror
+    # 2.1 REKAM MEDIS 
     if dokter_choice == '1':
-        print('[1] Buat\n[2] Edit\n[3] Lihat\n[4] Hapus\n[5] Exit')
-        pilihan=input('Pilih: ')
-        rekam_medis(pilihan, uname, conn, cur)
-        mode_dokter(uname, nama_lengkap_logged)
-    # 2.2 PROFIL ANDA v
+        def dokter_rekam_medis():
+            os.system('cls')
+            print("DOKTER>DASHBOARD>REKAM MEDIS")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+            print('MENU REKAM MEDIS : \n[1] Tambah Data Rekam Medis \n[2] Ubah Data Rekam Medis\n[3] Lihat Data Rekam Medis\n[4] Hapus Data Rekam Medis\n\n[5] Kembali ke Dasboard')
+            pilihan = input('\nMasukkan pilihan yang hendak anda akses : ')
+            rekam_medis(pilihan, uname, conn, cur)
+
+            dokter_rekam_medis()
+        
+        dokter_rekam_medis()
+ 
+    # 2.2 PROFIL ANDA v UI FIXED
     elif dokter_choice == '2':
-        print('[1] Lihat\n[2] Edit')
-        pilihan_anda=input('Pilih: ')
+        def profil_dokter(uname, nama_lengkap_logged):
+            conn, cur = postgresql_connect()
+            os.system('cls')
+            print("DOKTER>DASHBOARD>PROFIL ANDA")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+            
+            print('MENU PROFIL:\n[1] Lihat Profil Anda\n[2] Edit Profil Anda\n\n[3] Kembali ke Dashboard')
+            pilihan_anda=input('\nPilih menu yang hendak anda akses : ')
 
-        if pilihan_anda=='1':
-            sintaksis=f"select * from dokter where uname_dokter = '{uname}'"
-            cur.execute(sintaksis)
-            nilai = cur.fetchall()
-            header = ["Id Dokter", "Nama Dokter", "Telp Dokter", "No STR","Username Dokter","Password Dokter"]
-            print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
+            if pilihan_anda == '1':
+                os.system('cls')
+                print("DOKTER>DASHBOARD>PROFIL ANDA>LIHAT PROFIL")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                
+                sintaksis=f"select * from dokter where uname_dokter = '{uname}'"
+                cur.execute(sintaksis)
+                nilai = cur.fetchall()
+                header = [i[0] for i in cur.description]
+                print("Profil anda : ")
+                print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
+                input("\nTekan [Enter] untuk kembali ke Menu Profil :")
+                profil_dokter(uname, nama_lengkap_logged)
 
-        elif pilihan_anda=='2':
-            simpan=["nama_dokter","tlp_dokter","no_stp","uname_dokter","pw_dokter"]
-            for i,value in enumerate(simpan):
-                yes=input(f'Apakah {value} salah? (y/t)')
-                if yes=='y':
-                    if value == 'tlpn_dokter':
-                        update=input('Perbaiki: ')
-                        sintaksis= f"update dokter set {simpan[i]}= {update} where uname_dokter='{uname}'"
-                    else:
-                        update=input('Perbaiki: ')
-                        sintaksis= f"update dokter set {simpan[i]}= '{update}' where uname_dokter='{uname}'"
-                    try:
-                        cur.execute(sintaksis)
-                    except:
-                        print(f'Salah {header[i+1]}')
-            postgresql_commit_nclose(conn, cur)
-        mode_dokter(uname, nama_lengkap_logged)
+            elif pilihan_anda =='2':
+                header=["Nama Lengkap [dengan gelar]","No. telepon","No. SIP","username","password"]
+                simpan = ["nama_dokter", "tlp_dokter", "no_str", "uname_dokter", "pw_dokter"]
+                os.system('cls')
+                print("DOKTER>DASHBOARD>PROFIL ANDA>EDIT PROFIL")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                try:
+                    for i,value in enumerate(header):
+                        yes=input(f'[Y/N] Apakah {value} salah/hendak diubah? : ')
+                        if yes.upper()=='Y':
+                            if value == value:
+                                try:
+                                    update=input(f'{value} baru : ')
+                                    if update == '':
+                                        print(f"{header[i]} tidak boleh kosong!")
+                                    else:
+                                        sintaksis= f"update dokter set {simpan[i]} = '{update}' where uname_dokter='{uname}'"
+                                        cur.execute(sintaksis)
+                                        conn.commit()
+                                        print(f"{header[i]} berhasil diubah")
+                                except psycopg2.Error as e:
+                                    print(f"PERHATIAN : Data yang anda coba masukkan tidak sesuai! Ubah data {value} gagal")
+                        else:
+                            print(f"{header[i]} tidak diubah")
+                except:
+                    print("kesalahan sistem")
+                finally:
+                    postgresql_cls(conn, cur)
 
-    # 2.2 PROFIL ANDA v
-    elif dokter_choice == '2':
-        print('[1] Lihat\n[2] Edit')
-        pilihan_anda=input('Pilih: ')
+                input("\nTekan [Enter] untuk kembali ke Menu Profil : ")
+                profil_dokter(uname, nama_lengkap_logged)
 
-        if pilihan_anda=='1':
-            sintaksis=f"select * from dokter where uname_dokter = '{uname}'"
-            cur.execute(sintaksis)
-            nilai = cur.fetchall()
-            header = ["Id Dokter", "Nama Dokter", "Telp Dokter", "Nama Layanan","Hasil Medis"]
-            print(tabulate.tabulate(nilai,headers=header, tablefmt=f"{format_table}"))
+            elif pilihan_anda == '3':
+                mode_dokter(uname, nama_lengkap_logged)
 
-        elif pilihan_anda=='2':
-            simpan=["nama_dokter","tlp_dokter","no_stp","uname_dokter","pw_dokter"]
-            for i,value in enumerate(simpan):
-                yes=input(f'Apakah {value} salah? (y/t)')
-                if yes=='y':
-                    if value == 'tlpn_dokter':
-                        update=input('Perbaiki: ')
-                        sintaksis= f"update dokter set {simpan[i]}= {update} where uname_dokter='{uname}'"
-                    else:
-                        update=input('Perbaiki: ')
-                        sintaksis= f"update dokter set {simpan[i]}= '{update}' where uname_dokter='{uname}'"
-                    cur.execute(sintaksis)
-            postgresql_commit_nclose(conn, cur)
-        mode_dokter(uname, nama_lengkap_logged)
+            profil_dokter(uname, nama_lengkap_logged)
+        
+        profil_dokter(uname, nama_lengkap_logged)
 
-    # 2.3 EXIT v
+    # 2.3 EXIT v UI FIXED
     elif dokter_choice == '3':
         launch_page()
 
@@ -423,7 +556,7 @@ def mode_dokter(uname, nama_lengkap_logged):
 
 # -------------------------------------------------------------------------------------------------
 
-# 3. FITUR KUSTOMER v-------------------------------------------------------------------------------
+# 3. FITUR KUSTOMER v UI FIXED --------------------------------------------------------------------
 def mode_pelanggan(uname, nama_lengkap_logged):
     # ambil data id_pelanggan
     conn, cur = postgresql_connect()
@@ -799,11 +932,17 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                     cur.execute(f"select r.id_rekamed, r.tgl_waktu_pemeriksaan, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) where p.id_pelanggan = {id_pelanggan} AND TO_CHAR(tgl_waktu_pemeriksaan :: DATE, 'yyyy-mm-dd') = TO_CHAR(tgl_waktu_pemeriksaan :: DATE, '{tanggal}')")
                     datarekammedis = cur.fetchall()
                     headers = [i[0] for i in cur.description]
+                    wrapped_datarekammedis = []
+                    for row in datarekammedis:
+                        wrapped_row = list(row)
+                        wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                        wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                        wrapped_datarekammedis.append(wrapped_row)
                     os.system('cls')
                     print(f"PELANGGAN>DASHBOARD>REKAM MEDIS>LIHAT BERDASARKAN TANGGAL>TANGGAL:'{tanggal}'")
                     print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
-                    print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
-                    input("Tekan [Enter] untuk kembali ke Menu Rekam Medis : ")  
+                    print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                    
                 except Exception as e:
                     print(f"Terjadi kesalahan: {e}")
                     conn.rollback()
@@ -827,11 +966,17 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                         cur.execute(f'select r.id_rekamed, jh.nama_jenis, h.nama_hewan, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where jh.id_jenishewan = {jenishewan} AND h.id_pelanggan = {id_pelanggan}')
                         datarekammedis = cur.fetchall()
                         headers = [i[0] for i in cur.description]
+                        wrapped_datarekammedis = []
+                        for row in datarekammedis:
+                            wrapped_row = list(row)
+                            wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                            wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                            wrapped_datarekammedis.append(wrapped_row)
                         os.system('cls')
                         print(f"PELANGGAN>DASHBOARD>REKAM MEDIS>LIHAT BERDASARKAN JENIS HEWAN>ID JENIS:{jenishewan}")
                         print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                     
-                        print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                        print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
                     except:
                         print("\nPERHATIAN : Data yang hendak anca cari tidak valid!") 
                 except Exception as e:
@@ -858,11 +1003,17 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                         cur.execute(f'select r.id_rekamed,h.id_hewan, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_hewan = {idhewan} AND h.id_pelanggan = {id_pelanggan}')
                         datarekammedis = cur.fetchall()
                         headers = [i[0] for i in cur.description]
+                        wrapped_datarekammedis = []
+                        for row in datarekammedis:
+                            wrapped_row = list(row)
+                            wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                            wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                            wrapped_datarekammedis.append(wrapped_row)
                         os.system('cls')
                         print(f"PELANGGAN>DASHBOARD>REKAM MEDIS>LIHAT BERDASARKAN ID HEWAN>ID:{idhewan}")
                         print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                     
-                        print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                        print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
                     except:
                         print("\nPERHATIAN : Data yang hendak anda cari tidak valid! Silahkan coba lagi")
                     finally:
@@ -875,7 +1026,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             elif inputmenu == '4':
                 #MENAMPILKAN RINCIAN AWAL  
                 try:
-                    cur.execute(f"SELECT d.id_dokter, d.nama_dokter FROM dokter d JOIN rekam_medis r ON (r.id_dokter = d.id_dokter) WHERE r.id_dokter = d.id_dokter")
+                    cur.execute(f"SELECT d.id_dokter, d.nama_dokter FROM dokter d JOIN rekam_medis r ON (r.id_dokter = d.id_dokter) WHERE r.id_dokter = d.id_dokter GROUP BY d.id_dokter ORDER BY id_dokter ASC")
                     datarekammedis = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     os.system('cls')
@@ -888,10 +1039,16 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                         cur.execute(f'select r.id_rekamed, d.id_dokter, h.nama_hewan, jh.nama_jenis, p.nama_pelanggan, d.nama_dokter, l.nama_layanan, r.tgl_waktu_pemeriksaan, r.hasil_medis, r.catatan_tambahan from rekam_medis r join hewan h on (h.id_hewan = r.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = r.id_dokter) join layanan l on (l.id_layanan = r.id_layanan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where d.id_dokter = {iddokter} and p.id_pelanggan = {id_pelanggan}')
                         datarekammedis = cur.fetchall()
                         headers = [i[0] for i in cur.description]
+                        wrapped_datarekammedis = []
+                        for row in datarekammedis:
+                            wrapped_row = list(row)
+                            wrapped_row[-2] = wrap_text(wrapped_row[-2], textwraplen)  # Wrap 'hasil_medis'
+                            wrapped_row[-1] = wrap_text(wrapped_row[-1], textwraplen)  # Wrap 'catatan_tambahan'
+                            wrapped_datarekammedis.append(wrapped_row)
                         os.system('cls')
                         print(f"PELANGGAN>DASHBOARD>REKAM MEDIS>LIHAT BERDASARKAN ID DOKTER>ID:{iddokter}")
                         print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
-                        print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
+                        print(tabulate.tabulate(wrapped_datarekammedis, headers=headers, tablefmt=f"{format_table}"))
                     except:
                         print("\nPERHATIAN : Data yang hendak anda cari tidak valid! Silahkan coba lagi")
                     
@@ -909,7 +1066,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             
         menu_pelanggan_4(uname, nama_lengkap_logged)
              
-    # 3.4 KUNJUNGAN ANDA v
+    # 3.4 KUNJUNGAN ANDA v UI FIXED
     elif pelanggan_choice == '4':
         def kunjungan_anda(uname, nama_lengkap_logged):
             os.system('cls')
@@ -920,8 +1077,8 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             print("[2] Cari Berdasarkan Jenis Hewan")
             print("[3] Cari Berdasarkan id Hewan")
             print("[4] Cari Berdasarkan id Dokter")
-            print("\n[5] Kembali ke Dashboard\n")
-
+            print("[5] Tampilkan keseluruhan data")
+            print("\n[6] Kembali ke Dashboard\n")
             inputmenu = input('Silahkan masukan menu yang hendak diakses : ')
             conn, cur = postgresql_connect()
 
@@ -932,11 +1089,6 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                     os.system('cls')
                     print("PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN TANGGAL")
                     print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
-                    cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) WHERE h.id_pelanggan = {id_pelanggan}')
-                    datakunjungan = cur.fetchall()
-                    headers = [i[0] for i in cur.description]
-                    print("Keseluruhan riwayat anda :")
-                    print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
 
                     #MENAMPILKAN RINCIAN TANGGAL
                     tanggal = input('Masukan Tanggal Kunjungan yang Ingin Dicari! : ')
@@ -957,13 +1109,16 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                     postgresql_cls(conn, cur)
                     input("\nTekan [Enter] untuk kembali ke menu Riwayat Kunjungan :")
 
-            if inputmenu == '2':
+            elif inputmenu == '2':
                 #MENAMPILKAN RINCIAN AWAL  
                 os.system('cls')
                 try:
                     cur.execute("SELECT * FROM jenis_hewan")
                     datajenishewan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
+                    os.system('cls')
+                    print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN JENIS HEWAN")
+                    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                     print(tabulate.tabulate(datajenishewan, headers=headers, tablefmt=f"{format_table}"))
 
                     #MENAMPILKAN RINCIAN JENIS HEWAN
@@ -971,57 +1126,93 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                     cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND h.id_jenishewan = {jenishewan} AND r.id_reservasi = tr.id_reservasi')
                     datakunjungan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
+                    os.system('cls')
+                    print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN JENIS HEWAN>ID JENIS:{jenishewan}")
                     print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
-                    postgresql_cls(conn, cur)
-                    input("tekan [Enter] untuk KEMBALI KE MENU : ")
                 except Exception as e:
-                    print(f"Terjadi kesalahan: {e}")
-                    result = False
+                    print("PERHATIAN : Data yang anda coba masukkan tidak valid!")
                     conn.rollback()
-            if inputmenu == '3':
+                finally:
+                    postgresql_cls(conn, cur)
+                    input("\nTekan [Enter] untuk kembali ke menu Riwayat Kunjungan :")
+
+            elif inputmenu == '3':
                 try:
+                    os.system('cls')
+                    print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN ID HEWAN")
+                    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                    
                     cur.execute(f"SELECT h.id_hewan, h.nama_hewan, h.tanggal_lahir, j.nama_jenis FROM hewan h JOIN jenis_hewan j ON (h.id_jenishewan = j.id_jenishewan) WHERE id_pelanggan = {id_pelanggan}")
                     datarekammedis = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
 
-
                     #MENAMPILKAN RINCIAN ID HEWAN
                     idhewan = int(input('Masukan ID Hewan yang Ingin Dicari! : '))
-                    cur.execute(f'select r.id_reservasi, h.id_hewan, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND h.id_hewan = {idhewan} AND r.id_reservasi = tr.id_reservasi')
-                    datakunjungan = cur.fetchall()
-                    headers = [i[0] for i in cur.description]
-                    print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
-                    postgresql_cls(conn, cur)
-                    input("tekan [Enter] untuk KEMBALI KE MENU : ")
+                    try:
+                        os.system('cls')
+                        print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN ID HEWAN>ID:{idhewan}")
+                        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                        
+                        cur.execute(f'select r.id_reservasi, h.id_hewan, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND h.id_hewan = {idhewan} AND r.id_reservasi = tr.id_reservasi')
+                        datakunjungan = cur.fetchall()
+                        headers = [i[0] for i in cur.description]
+                        print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
+                    except psycopg2.Error as e:
+                        print("PERHATIAN : Data yang anda coba cari tidak valid")
                 except Exception as e:
-                    print(f"Terjadi kesalahan: {e}")
-                    result = False
+                    print("PERHATIAN : Data yang anda coba cari tidak valid")
                     conn.rollback()
-            if inputmenu == '4':
+                finally:
+                    postgresql_cls(conn, cur)
+                    input("tekan [Enter] untuk kembali ke Menu Riwayat Kunjungan : ")
+
+            elif inputmenu == '4':
                 try:
-                    cur.execute(f"SELECT d.id_dokter, d.nama_dokter FROM dokter d JOIN rekam_medis r ON (r.id_dokter = d.id_dokter) WHERE r.id_dokter = d.id_dokter")
+                    cur.execute(f"SELECT id_dokter, nama_dokter FROM dokter ORDER BY id_dokter ASC")
                     datarekammedis = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     os.system('cls')
+                    print("PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN DOKTER")
+                    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                     print(tabulate.tabulate(datarekammedis, headers=headers, tablefmt=f"{format_table}"))
                     
                     #MENAMPILKAN RINCIAN IDDOKTER
-                    iddokter = int(input('Masukan Tanggal Reservasi yang Ingin Dicari!'))
-                    cur.execute(f'select r.id_reservasi, d.id_dokter, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND d.id_dokter = {iddokter} AND r.id_reservasi = tr.id_reservasi')
-                    datakunjungan = cur.fetchall()
-                    headers = [i[0] for i in cur.description]
-                    print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
-                    postgresql_cls(conn, cur)
-                    input("tekan [Enter] untuk KEMBALI KE MENU : ")
+                    iddokter = int(input('Masukkan ID dokter yang hendak dicari : '))
+                    try:
+                        cur.execute(f'select r.id_reservasi, d.id_dokter, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND d.id_dokter = {iddokter} AND r.id_reservasi = tr.id_reservasi')
+                        datakunjungan = cur.fetchall()
+                        headers = [i[0] for i in cur.description]
+                        os.system('cls')
+                        print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN DOKTER>ID:{iddokter}")
+                        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                        print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
+                    except:
+                        print("PERHATIAN : Data yang hendak anda masukkan tidak valid!")
+                    
                 except Exception as e:
-                    print(f"Terjadi kesalahan: {e}")
-                    result = False
+                    print("PERHATIAN : Data yang hendak anda masukkan tidak valid!")
                     conn.rollback()
-            elif inputmenu =='5':
-                mode_pelanggan(uname, nama_lengkap_logged)
+                finally:
+                    postgresql_cls(conn, cur)
+                    input("\nTekan [Enter] untuk kembali ke Menu Riwayat Kunjungan")
 
+            elif inputmenu == '5':
+                os.system('cls')
+                print("PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>SEMUA")
+                print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) WHERE h.id_pelanggan = {id_pelanggan}')
+                datakunjungan = cur.fetchall()
+                headers = [i[0] for i in cur.description]
+                print("Keseluruhan riwayat anda :")
+                print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
+                input("Tekan [Enter] untuk kembali ke Menu Kunjungan Anda : ")
+            
+            elif inputmenu == '6':
+                mode_pelanggan(uname, nama_lengkap_logged)
+            
             kunjungan_anda(uname, nama_lengkap_logged)
+
         kunjungan_anda(uname, nama_lengkap_logged)
 
     # 3.5 PROFIL ANDA v UI FIXED
@@ -1580,9 +1771,6 @@ def mode_admin(uname, nama_lengkap_logged):
 
     # 4.3 DATA REKAM MEDIS v UI FIXED
     elif admin_choice == '3': 
-        def wrap_text(text, width):
-            return "\n".join(textwrap.wrap(text, width))
-        
         def menu_rekammedis(nama_lengkap_logged):
             os.system('cls')
             print("ADMIN>DASHBOARD>REKAM MEDIS")
@@ -3142,12 +3330,98 @@ def admin_pertama():
             else:
                 sys.exit()
         finally:
-            postgresql_cls(conn, cur)
+            postgresql_commit_nclose(conn, cur)
 
 # -------------------------------------------------------------------------------------------------
 
 # FITUR MEMBUAT DATABASE --------------------------------------------------------------------------
 def db_pertama():
+    # membuat db dan entiti
+    try:
+        conn, cur = base_postgresql_connect()
+        new_database_name = "SatSet"
+        cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(new_database_name)))
+
+        postgresql_commit_nclose(conn, cur)
+
+
+        conn, cur = postgresql_connect()
+
+        cur.execute("""
+        CREATE TABLE dokter (
+            id_dokter serial PRIMARY KEY,
+            nama_dokter varchar(64) NOT NULL,
+            tlp_dokter varchar(16) NOT NULL UNIQUE,
+            no_str bigint NOT NULL UNIQUE, 
+            uname_dokter varchar(16) NOT NULL UNIQUE,
+            pw_dokter varchar(16) NOT NULL
+        );
+        CREATE TABLE staf (
+            id_staf serial PRIMARY KEY,
+            nama_staf varchar(64) NOT NULL,
+            tlp_staf varchar(16) NOT NULL UNIQUE,
+            uname_staf varchar(16) NOT NULL UNIQUE,
+            pw_staf varchar(16) NOT NULL
+        );
+
+        CREATE TABLE pelanggan (
+            id_pelanggan serial PRIMARY KEY,
+            nama_pelanggan varchar(64) NOT NULL,
+            tlp_pelanggan varchar(16) NOT NULL UNIQUE,
+            uname_pelanggan varchar(16) NOT NULL UNIQUE,
+            pw_pelanggan varchar(16) NOT NULL
+        );
+
+        CREATE TABLE jenis_hewan (
+            id_jenishewan serial PRIMARY KEY,
+            nama_jenis varchar(64) NOT NULL
+        );
+
+        CREATE TABLE hewan (
+            id_hewan serial PRIMARY KEY,
+            nama_hewan varchar(64) NOT NULL,
+            tanggal_lahir date NOT NULL,
+            id_pelanggan integer REFERENCES pelanggan(id_pelanggan),
+            id_jenishewan integer REFERENCES jenis_hewan(id_jenishewan)
+        );
+
+        CREATE TABLE layanan (
+            id_layanan serial PRIMARY KEY,
+            nama_layanan varchar(64) NOT NULL,
+            harga_layanan integer NOT NULL
+        );
+
+        CREATE TABLE reservasi (
+            id_reservasi serial PRIMARY KEY,
+            id_hewan integer REFERENCES hewan(id_hewan),
+            id_staf integer REFERENCES staf(id_staf),
+            id_layanan integer REFERENCES layanan(id_layanan),
+            reservasi_tgl_layanan date NOT NULL,
+            reservasi_waktu_layanan time NOT NULL
+        );
+
+        CREATE TABLE transaksi (
+            id_transaksi serial PRIMARY KEY,
+            tgl_waktu_transaksi timestamp NOT NULL,
+            id_reservasi integer REFERENCES reservasi(id_reservasi)
+        );
+
+        CREATE TABLE rekam_medis (
+            id_rekamed serial PRIMARY KEY,
+            id_hewan integer REFERENCES hewan(id_hewan),
+            id_dokter integer REFERENCES dokter(id_dokter),
+            id_layanan integer REFERENCES layanan(id_layanan),
+            tgl_waktu_pemeriksaan timestamp NOT NULL,
+            hasil_medis TEXT NOT NULL,
+            catatan_tambahan TEXT
+        );
+        """)
+        conn.commit()
+    except:
+        print("FATAL_ERROR:Gagal membuat entitas!")
+        sys.exit()
+
+
     welcome_interface()
 
 # -------------------------------------------------------------------------------------------------
@@ -3204,7 +3478,7 @@ mini_header = minihead_a+'\n'+minihead_b+'\n'+minihead_c+'\n'+minigead_d+'\n'
 # -------------------------------------------------------------------------------------------------                        
 
 # VARIABEL-VARIABEL PENTNG ------------------------------------------------------------------------
-delay_welcome = 0 # ANIMASI PADA WELCOMING PAGE
+delay_welcome = 2 # ANIMASI PADA WELCOMING PAGE
 
 format_table = 'fancy_grid'
 textwraplen = 15
