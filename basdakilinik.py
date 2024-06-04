@@ -166,7 +166,7 @@ def launch_page():
     os.system('cls')
     print(header)
     print("Selamat datang di Klinik Satwa Sehat\n")
-    print(" [1] Log-in \n [2] Sign-Up Customer \n [3] Manual Book \n [4] Exit \n")
+    print(" [1] Log-in \n [2] Sign-Up Customer \n [3] EULA \n [4] Exit \n")
     # Pilih menu
     launch_choice = input("Silahkan pilih menu anda : ")
 
@@ -577,22 +577,31 @@ def mode_pelanggan(uname, nama_lengkap_logged):
         input("\nTekan [Enter] untuk kembali ke Dasborard : ")
         mode_pelanggan(uname, nama_lengkap_logged)
 
-    # 3.2 HEWAN PELIHARAAN ANDA v
+    # 3.2 HEWAN PELIHARAAN ANDA v UI
     elif pelanggan_choice == '2':
         conn, cur = postgresql_connect()
-        print(" 1. Tambah Data Hewan Peliharaan")
-        print(" 2. Lihat Data Hewan Peliharaan Anda")
-        print(" 3. Ubah Data Hewan Anda")
-        print(" 4. Hapus Data Hewan Anda")
-        inputmenu = input("Masukan opsi selanjutnya : ")
+        os.system('cls')
+        print("PELANGGAN>DASHBOARD>HEWAN PELIHARAAN")
+        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+        
+        print("MENU HEWAN PELIHARAAN ANDA :")
+        print("[1] Tambah Data Hewan Peliharaan")
+        print("[2] Lihat Data Hewan Peliharaan Anda")
+        print("[3] Ubah Data Hewan Anda")
+        print("[4] Hapus Data Hewan Anda")
+        inputmenu = input("Masukan opsi anda : ")
         if inputmenu == '1':    # tambah hewan v
+            os.system('cls')
+            print("PELANGGAN>DASHBOARD>HEWAN PELIHARAAN>TAMBAH DATA")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+        
             cur.execute('SELECT * FROM jenis_hewan')
             datahewan = cur.fetchall()
             headers = [i[0] for i in cur.description]
             print(tabulate.tabulate(datahewan, headers=headers, tablefmt=f"{format_table}"))
 
-            jenishewan = input("Masukan ID Jenis Hewan Anda : ")
-            nama_hewan = input("Masukan Nama Hewan Anda : ")
+            jenishewan   = input("Masukan ID Jenis Hewan Anda : ")
+            nama_hewan   = input("Masukan Nama Hewan Anda : ")
             tanggallahir = input("Masukan Tanggal Lahir Hewan Anda (yyyy-mm-dd) : ")
             try:
                 cur.execute(f"INSERT INTO hewan (nama_hewan, tanggal_lahir, id_pelanggan, id_jenishewan) VALUES ('{nama_hewan}', '{tanggallahir}', {id_pelanggan}, {jenishewan})")
@@ -604,14 +613,21 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                 print("Terdapat kesalahan pada data hewan, silahkan coba lagi")
         
         elif inputmenu == '2':  # lihat list hewan anda v
+            os.system('cls')
+            print("PELANGGAN>DASHBOARD>HEWAN PELIHARAAN>LIHAT DATA")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+        
             cur.execute(f"Select h.id_hewan, h.nama_hewan, jh.nama_jenis, h.tanggal_lahir, p.nama_pelanggan from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan}")
             lihatdata = cur.fetchall()
             headers = [i[0] for i in cur.description]
             print(tabulate.tabulate(lihatdata, headers=headers, tablefmt=f"{format_table}"))
             postgresql_cls(conn, cur)
 
-        elif inputmenu == '3':  # edit data hewan v 
+        elif inputmenu == '3':  # edit data hewan v
             os.system('cls')
+            print("PELANGGAN>DASHBOARD>HEWAN PELIHARAAN>UBAH DATA")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+         
             cur.execute(f'select h.id_hewan, h.nama_hewan, h.tanggal_lahir, jh.nama_jenis from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan}')
             datahewan = cur.fetchall()
             headers = [i[0] for i in cur.description]
@@ -624,9 +640,9 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             headers = [i[0] for i in cur.description]
             print(tabulate.tabulate(datahewan, headers=headers, tablefmt=f"{format_table}"))
 
-            nama_hewan = input('masukan nama hewan baru : ')
-            tanggallahir = input('masukan tanggal lahir baru : ')
-            idjenis = input('masukan ID jenis : ')
+            nama_hewan   = input('masukan nama hewan baru [Kosongi bila tidak ingin mengubah]    : ')
+            tanggallahir = input('masukan tanggal lahir baru [Kosongi bila tidak ingin mengubah] : ')
+            idjenis      = input('masukan ID jenis baru [Kosongi bila tidak ingin mengubah]      : ')
 
             if nama_hewan == '':
                 pass
@@ -654,6 +670,10 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             postgresql_commit_nclose(conn, cur)
 
         elif inputmenu == '4':  # hapus data hewan v
+            os.system('cls')
+            print("PELANGGAN>DASHBOARD>HEWAN PELIHARAAN>HAPUS DATA")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+        
             # lihat dulu data hewannya
             cur.execute(f"Select h.id_hewan, h.nama_hewan, jh.nama_jenis, h.tanggal_lahir, p.nama_pelanggan from hewan h join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) where p.id_pelanggan = {id_pelanggan}")
             lihatdata = cur.fetchall()
@@ -661,7 +681,9 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             print(tabulate.tabulate(lihatdata, headers=headers, tablefmt=f"{format_table}"))
             postgresql_cls(conn, cur)
 
-            id_hewan = int(input("Masukkan ID hewan yang ingin dihapus: "))
+            id_hewan = input("Masukkan ID hewan yang ingin dihapus : ")
+            if id_hewan == '':
+                mode_pelanggan(uname, nama_lengkap_logged)
             """Menghapus data hewan dari database."""
 
             conn, cur = postgresql_connect()
@@ -2931,9 +2953,53 @@ def mode_admin(uname, nama_lengkap_logged):
 
 # FITUR MANUAL BOOK -------------------------------------------------------------------------------
 def manual_book():
+    os.system('cls')
     input("""
-    bruh
-    """ "\n")
+    END USER LICENSE AGREEMENT (EULA)
+
+Selamat datang di Program SatSet Care, program sistem  berbasis terminal.
+SatSet Care dibuat menggunakan bahasa pemrograman Python dan database PostgreSQL.
+
+Sebelum menggunakan Program SatSet Care harap baca ketentuan penggunaan program kami berikut: 
+        
+    1. Program ini dapat digunakan oleh admin atau staf dan pelanggan yang telah terdaftar dalam sistem.
+    2. Dilarang menggunakan program ini untuk tujuan selain yang telah ditentukan.
+    3. Setiap aktivitas yang direkam oleh pengguna dalam program berkaitan dengan
+       pengguna yang bersangkutan menjadi tanggung jawab yang bersangkutan.
+    4. Kami akan menyimpan data yang terkait dengan penggunaan program ini sesuai dengan
+       kebijakan.
+    5. DILARANG mengubah dan memodifikasi program ini kemudian mendistribusikannya
+       tanpa seizin kami
+    6. Pengguna bisa menggunakan Program ini pada perangkat komputer dengan sistem operasi
+       Windows dan MacOS
+    7. Jika program ini akan digunakan pada sistem operasi Mac, maka perlu mengubah
+       perintah 'cls' menjadi 'clear'
+        
+Dengan melanjutkan, Anda menyetujui semua syarat dan ketentuan diatas.
+
+
+        Setelah anda menyetujui ketentuan diatas, berikut adalah fitur SatSet Care:
+
+-Fitur Admin
+    1. Admin dapat menambah dan mengurangi pengguna yang dapat menggunakan program ini.
+    2. Admin dapat melihat dan mengedit Data Reservasi, Rekam Medis, Hewan Peliharaan, Customer atau pelanggan, layanan serta staf atau admin,.
+
+-Fitur Dokter
+    1. Dokter dapat menambah dan mengurangi data Rekam Medis.
+    2. Dokter dapat melihat dan mengedit Data Rekam Medis, serta profil dokter itu sendiri.
+
+-Fitur Customer
+    1. Customer dapat melakukan reservasi sesuai dengan ketentuan yang dibuat oleh admin
+    2. Customer dapat menambah dan mengurangi Data hewan peliharaan.
+    3. Customer dapat Melihat Data Hewan Peliharaan, Data Rekam Medis Hewan, Dokter, dan layanan yang ada.
+    4. Customer dapat mengedit Data Hewan Peliharaan, dan profil customer itu sendiri.
+        
+                    Terima kasih telah menggunakan program SatSet Care
+
+
+©Kelompok 3 TA Basda
+
+Tekan [Enter] untuk kembali """)
 
 # -------------------------------------------------------------------------------------------------
 
