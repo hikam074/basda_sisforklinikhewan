@@ -913,35 +913,50 @@ def mode_pelanggan(uname, nama_lengkap_logged):
     elif pelanggan_choice == '4':
         def kunjungan_anda(uname, nama_lengkap_logged):
             os.system('cls')
+            print("PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN")
+            print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+            print("MENU RIWAYAT KUNJUNGAN ANDA : ")
+            print("[1] Cari Berdasarkan Tanggal")
+            print("[2] Cari Berdasarkan Jenis Hewan")
+            print("[3] Cari Berdasarkan id Hewan")
+            print("[4] Cari Berdasarkan id Dokter")
+            print("\n[5] Kembali ke Dashboard\n")
+
+            inputmenu = input('Silahkan masukan menu yang hendak diakses : ')
             conn, cur = postgresql_connect()
-            print(" 1. Cari Berdasarkan Tanggal")
-            print(" 2. Cari Berdasarkan Jenis Hewan")
-            print(" 3. Cari Berdasarkan id Hewan")
-            print(" 4. Cari Berdasarkan id Dokter")
-            print(" 5. EXIT")
-            inputmenu = input('Silahkan Masukan Menu Kunjungan! : ')
+
             if inputmenu == '1':
                 
                 #MENAMPILKAN RINCIAN AWAL 
-                print('Ini adalah riwayat kunjungan anda sebelumnya.')
-                try: 
+                try:
+                    os.system('cls')
+                    print("PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN TANGGAL")
+                    print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
                     cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) WHERE h.id_pelanggan = {id_pelanggan}')
                     datakunjungan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
+                    print("Keseluruhan riwayat anda :")
                     print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
 
                     #MENAMPILKAN RINCIAN TANGGAL
                     tanggal = input('Masukan Tanggal Kunjungan yang Ingin Dicari! : ')
-                    cur.execute(f"select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) WHERE h.id_pelanggan = {id_pelanggan} AND TO_CHAR(r.reservasi_tgl_layanan :: DATE, 'yyyy-mm-dd') = TO_CHAR(r.reservasi_tgl_layanan :: DATE, '{tanggal}')")
-                    datakunjungan = cur.fetchall()
-                    headers = [i[0] for i in cur.description]
-                    print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
-                    postgresql_cls(conn, cur)
-                    input("tekan [Enter] untuk KEMBALI KE MENU : ")
+                    try:
+                        cur.execute(f"select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) WHERE h.id_pelanggan = {id_pelanggan} AND TO_CHAR(r.reservasi_tgl_layanan :: DATE, 'yyyy-mm-dd') = TO_CHAR(r.reservasi_tgl_layanan :: DATE, '{tanggal}') AND r.id_reservasi = tr.id_reservasi")
+                        datakunjungan = cur.fetchall()
+                        headers = [i[0] for i in cur.description]
+                        os.system('cls')
+                        print(f"PELANGGAN>DASHBOARD>RIWAYAT KUNJUNGAN>BERDASARKAN TANGGAL>TANGGAL:{tanggal}")
+                        print(f"{datetime.datetime.now().strftime("\r%A, %d %B %Y | %H:%M:%S")} | {nama_lengkap_logged}\n")
+                        print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
+                    except:
+                        print("PERHATIAN : Data yang anda coba masukkan tidak valid!")
                 except Exception as e:
                     print(f"Terjadi kesalahan: {e}")
-                    result = False
                     conn.rollback()
+                finally:
+                    postgresql_cls(conn, cur)
+                    input("\nTekan [Enter] untuk kembali ke menu Riwayat Kunjungan :")
+
             if inputmenu == '2':
                 #MENAMPILKAN RINCIAN AWAL  
                 os.system('cls')
@@ -953,7 +968,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
 
                     #MENAMPILKAN RINCIAN JENIS HEWAN
                     jenishewan = input('Masukan ID jenis hewan yang Ingin Dicari! : ')
-                    cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_pelanggan = {id_pelanggan} AND h.id_jenishewan = {jenishewan}')
+                    cur.execute(f'select r.id_reservasi, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND h.id_jenishewan = {jenishewan} AND r.id_reservasi = tr.id_reservasi')
                     datakunjungan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
@@ -973,7 +988,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
 
                     #MENAMPILKAN RINCIAN ID HEWAN
                     idhewan = int(input('Masukan ID Hewan yang Ingin Dicari! : '))
-                    cur.execute(f'select r.id_reservasi, h.id_hewan, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_pelanggan = {id_pelanggan} AND h.id_hewan = {idhewan}')
+                    cur.execute(f'select r.id_reservasi, h.id_hewan, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND h.id_hewan = {idhewan} AND r.id_reservasi = tr.id_reservasi')
                     datakunjungan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
@@ -993,7 +1008,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
                     
                     #MENAMPILKAN RINCIAN IDDOKTER
                     iddokter = int(input('Masukan Tanggal Reservasi yang Ingin Dicari!'))
-                    cur.execute(f'select r.id_reservasi, d.id_dokter, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) where h.id_pelanggan = {id_pelanggan} AND d.id_dokter = {iddokter}')
+                    cur.execute(f'select r.id_reservasi, d.id_dokter, h.nama_hewan, jh.nama_jenis, d.nama_dokter, l.nama_layanan, r.reservasi_tgl_layanan, r.reservasi_waktu_layanan from rekam_medis re join hewan h on (h.id_hewan = re.id_hewan) join pelanggan p on (p.id_pelanggan = h.id_pelanggan) join dokter d on (d.id_dokter = re.id_dokter) join layanan l on (l.id_layanan = re.id_layanan) join reservasi r on (r.id_hewan = re.id_hewan) join jenis_hewan jh on (jh.id_jenishewan = h.id_jenishewan) join transaksi tr on (r.id_reservasi = tr.id_reservasi) where h.id_pelanggan = {id_pelanggan} AND d.id_dokter = {iddokter} AND r.id_reservasi = tr.id_reservasi')
                     datakunjungan = cur.fetchall()
                     headers = [i[0] for i in cur.description]
                     print(tabulate.tabulate(datakunjungan, headers=headers, tablefmt=f"{format_table}"))
@@ -1009,7 +1024,7 @@ def mode_pelanggan(uname, nama_lengkap_logged):
             kunjungan_anda(uname, nama_lengkap_logged)
         kunjungan_anda(uname, nama_lengkap_logged)
 
-    # 3.5 PROFIL ANDA v
+    # 3.5 PROFIL ANDA v UI FIXED
     elif pelanggan_choice == '5':
         os.system('cls')
         print("PELANGGAN>DASHBOARD>PROFIL ANDA")
